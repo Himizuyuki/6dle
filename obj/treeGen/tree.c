@@ -5,10 +5,12 @@
 Tree* initList(){
 	Tree* tree = malloc(sizeof(Tree));
 	tree->letter = 1;
+	tree->depth = 0;
 	tree->child = malloc(26 * sizeof(Tree));
 	for (size_t i = 0; i < 25; i++){
 
 		tree->child[i]->letter = 0;
+		tree->child[i]->depth = tree->depth + 1;
 		tree->child[i]->child = NULL;
 	}
 	return tree;
@@ -28,11 +30,15 @@ int addWord(char* word, Tree* tree){
 		if (tmp->child[(word[i] - 19) % 26]->letter == 0){
 			tmp = tmp->child[(word[i] - 19) % 26];
 			tmp->letter = 1;
-			tmp->child = malloc(26 * sizeof(Tree));
-			for (size_t j = 0; j < 25; j++){
-				
-				tmp->child[j]->letter = 0;
-				tmp->child[j]->child = NULL;
+			if (tmp->depth < 6) {
+			
+				tmp->child = malloc(26 * sizeof(Tree));
+				for (size_t j = 0; j < 25; j++){
+					
+					tmp->child[j]->letter = 0;
+					tmp->child[j]->depth = tmp->depth + 1;
+					tmp->child[j]->child = NULL;
+				}
 			}
 		}
 		else

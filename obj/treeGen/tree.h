@@ -4,8 +4,9 @@
 //general tree
 typedef struct Tree{
     
-    char letter; 
-    struct Tree **child;
+    char letter; // bool if the letter is present
+    char depth; // depth in the tree max of 6
+    struct Tree **child; // linked list to children
 
 } Tree;
 // for letter char:
