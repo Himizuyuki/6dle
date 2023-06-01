@@ -17,4 +17,15 @@ typedef struct Tree{
 //  for child*,
 //      points towards all the children from 0 to 25 (or the letters a to z)
 
+// Initialise the whole tree
+Tree* initList();
+
+// add a Word to the tree supposing the word is 6 letters long
+int addWord(char* word, Tree* tree);
+
+// remove a Word to the tree supposing the word is 6 letters long
+int removeWord(char* word, Tree* tree);
+
+// free the whole structure 
+void freeTree(Tree* tree);
 #endif // TREE_H
