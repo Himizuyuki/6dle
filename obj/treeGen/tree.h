@@ -18,7 +18,7 @@ typedef struct Tree{
 //      points towards all the children from 0 to 25 (or the letters a to z)
 
 // Initialise the whole tree
-Tree* initList();
+Tree* initTree();
 
 // add a Word to the tree supposing the word is 6 letters long
 int addWord(char* word, Tree* tree);
@@ -28,4 +28,7 @@ int removeWord(char* word, Tree* tree);
 
 // free the whole structure 
 void freeTree(Tree* tree);
+
+// print the tree
+void printTree(Tree* tree);
 #endif // TREE_H

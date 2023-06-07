@@ -9,4 +9,6 @@
 
 #include "../treeGen/tree.h"
 
+Tree* Tloader(const char* path);
+
 #endif // DEBUG
