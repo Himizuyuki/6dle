@@ -1,18 +1,21 @@
 #include "tree.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 int main() {
 	// Initialise the tree
 	Tree* tree = initTree();
-	
+	//int r;
 	// add Words to the tree
 	addWord("colour", tree);
 	addWord("pilots", tree);
 	
 	printTree(tree);
 	// remove Words from the tree
-	//removeWord("colour", tree);
-	//removeWord("probed", tree);
+	/*r = removeWord("colour", tree);
+	if (r) printf("colour removed successfully\n");
+	r = removeWord("probed", tree);
+	if (!r) printf("word was not removed / wasn't in the tree\n");*/
 	
 	addWord("apples", tree);
 	addWord("things", tree);
