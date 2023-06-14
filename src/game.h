@@ -1,7 +1,7 @@
 #ifndef GAME_H
 #define GAME_H
 
-#define maxGuesses 5
+#define maxGuesses 6
 
 #include "../obj/treeGen/tree.h"
 #include "../obj/Loader/loader.h"
@@ -28,7 +28,7 @@ void findRandom(char* word, Tree* wb);
 
 char* checkWord(char* input, Game* game);
 
-void prettyPrint(char* input, char* color);
+void prettyPrint(char* color, Game* game);
 
 void GameLoop(char* WBpath);
 
