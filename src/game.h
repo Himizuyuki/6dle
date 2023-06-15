@@ -17,6 +17,7 @@ typedef struct Game {
     int nb_Guesses;
     char Hword[7];
     char guessedWords[maxGuesses][7];
+    char colorWords[maxGuesses][6];
     char found; // 0 -> false | 1 -> true
 }Game;
 

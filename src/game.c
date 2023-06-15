@@ -2,12 +2,13 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* find a random word to choose from the tree struct or the word bank
 * check if an inputted word is added
 * from the secret word find the letters that are : (take care if there are double letters or more)
 *                                                  -in the right place (green)
-*                                                  -in the word but at the wrong place (yellow)
+                                                  -in the word but at the wrong place (yellow)
 *                                                  -not in the word
 * Game loop :
 *  -> Initialize the Game
@@ -35,7 +36,7 @@
 *       -> free Game struct
 */
 
-void findRandom(char word[7], Tree *wb);
+void findRandom(char* word, Tree *wb);
 
 Game* initGame(char* WBpath){
     
@@ -47,6 +48,9 @@ Game* initGame(char* WBpath){
     for (size_t i = 0; i < maxGuesses; i++){
         for (size_t j = 0; j < 7; j++){
             game->guessedWords[i][j] = 0;
+        }
+        for (size_t j = 0; j < 6; j++){
+            game->colorWords[i][j] = 'b';
         }
     }
     findRandom(game->Hword, game->WB);
@@ -64,7 +68,7 @@ void findRandom(char *word, Tree *wb){
     for (size_t i = 0; i < 6; i++){
         char m[26] = {0, };
         char nbW = 0;
-        for (size_t j = 0; j < 26; j++){
+        for (char j = 0; j < 26; j++){
             if (wb->child[j] != NULL){
                 m[nbW] = j;
                 nbW++;
@@ -107,14 +111,14 @@ char* GetInput (Game* game){
                 if (validWord(word, game))
                     break;
                 else{
-                    printf("\nWord not found try again!\n");
-                    for (size_t i = 0; i < len; i++)
+                    printf("\nWord not found try again! or add it to the word bank\n");
+                    for (char i = 0; i < len; i++)
                         printf("%c", word[i]);
                 }
             }
             else{
                 printf("\nword input isn't correct\n");
-                for (size_t i = 0; i < len; i++)
+                for (char i = 0; i < len; i++)
                     printf("%c", word[i]);
             }
         }
@@ -122,7 +126,7 @@ char* GetInput (Game* game){
             word[len--] = 0;
         else {
             printf("\ncontinue typing your word\n");
-            for (size_t i = 0; i < len; i++)
+            for (char i = 0; i < len; i++)
                 printf("%c", word[i]);
         }
     }
@@ -157,7 +161,7 @@ char* checkWord(char* input, Game* game){
             }
         }
     }
-    if (f == 5)
+    if (strcmp(input, game->Hword) == 0)
         game->found = 1;
     return color;
 }
@@ -188,9 +192,9 @@ void printLine(char* color, Game* game, size_t index){
 void prettyPrint(char* color, Game* game){
     system("clear");
     printf("\n╔═══════════════════════╗\n");
-    printf("║You have %d guesses left║\n", maxGuesses - game->nb_Guesses - 1);
+    printf("║You have %d guesses left║\n", maxGuesses - game->nb_Guesses);
     printf("╠═══╦═══╦═══╦═══╦═══╦═══╣\n");
-    size_t i = 0;
+    int i = 0;
     for (; i < game->nb_Guesses; i++){
         printLine(color, game, i);
         if (i == maxGuesses - 1)
@@ -210,7 +214,8 @@ void prettyPrint(char* color, Game* game){
 char playAgain(){
     char input = 0;
     while (input != 'Y' && input != 'n'){
-        scanf("Do you want to play again? (Y or n) %c\n", &input);
+        printf("Do you want to play again? (Y or n) ");
+        scanf("%c", &input);
     }
     return (input == 'Y') ? 1 : 0;
 }
@@ -219,7 +224,9 @@ void GameLoop(char* WBpath){
     Game* game = initGame(WBpath);
     char playing = 1;
     while (playing){
-        while (game->found && game->nb_Guesses < maxGuesses){
+        while (game->nb_Guesses < maxGuesses){
+            if (game->found == 1)
+                break;
             char* input = GetInput(game);
             char* color = checkWord(input, game);
             free(input);
