@@ -29,7 +29,7 @@ void findRandom(char* word, Tree* wb);
 
 char* checkWord(char* input, Game* game);
 
-void prettyPrint(char* color, Game* game);
+void prettyPrint(Game* game);
 
 void GameLoop(char* WBpath);
 

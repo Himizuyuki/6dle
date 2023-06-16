@@ -35,7 +35,57 @@
 *       -> free the GTree
 *       -> free Game struct
 */
+void yellow(){
+    printf("\033[1;33m");
+}
 
+void red(){
+    printf("\033[1;31m");
+}
+
+void green(){
+    printf("\033[1;32m");
+}
+
+void reset(){
+    printf("\033[0m");
+}
+
+void printLine(Game* game, size_t index){
+    for (size_t i = 0; i < 6; i++){
+        printf("║ ");
+        if (game->colorWords[index][i] == 'g') green();
+        else if (game->colorWords[index][i] == 'y') yellow();
+        if (game->guessedWords[index][i] == 0)
+            printf("  ");
+        else
+            printf("%c ",toupper(game->guessedWords[index][i]));
+        reset();
+    }
+    printf("║\n");
+}
+
+void prettyPrint(Game* game){
+    system("clear");
+    printf("\n╔═══════════════════════╗\n");
+    printf("║You have %d guesses left║\n", maxGuesses - game->nb_Guesses);
+    printf("╠═══╦═══╦═══╦═══╦═══╦═══╣\n");
+    int i = 0;
+    for (; i < game->nb_Guesses; i++){
+        printLine(game, i);
+        if (i == maxGuesses - 1)
+            printf("╚═══╩═══╩═══╩═══╩═══╩═══╝\n");
+        else
+            printf("╠═══╬═══╬═══╬═══╬═══╬═══╣\n");
+    }
+    for (; i < maxGuesses; i++){
+        printf("║   ║   ║   ║   ║   ║   ║\n");
+        if (i == maxGuesses - 1)
+            printf("╚═══╩═══╩═══╩═══╩═══╩═══╝\n");
+        else
+            printf("╠═══╬═══╬═══╬═══╬═══╬═══╣\n");
+    }
+}
 void findRandom(char* word, Tree *wb);
 
 Game* initGame(char* WBpath){
@@ -81,10 +131,10 @@ void findRandom(char *word, Tree *wb){
 
 }
 
-int validWord(char* input, Game* game){
+int validWord(Game* game){
     Tree* tree = game->WB;
     for (size_t i = 0; i < 6; i++){
-        size_t index = input[i] - 'a';
+        size_t index = game->guessedWords[game->nb_Guesses][i] - 'a';
         if (tree->child[index] != NULL)
             tree = tree->child[index];
         else
@@ -93,123 +143,74 @@ int validWord(char* input, Game* game){
     return 1;
 }
 
-char* GetInput (Game* game){
-    char* word = calloc(7, sizeof(char));
+void GetInput (Game* game){
     char input = 0;
     char len = 0;
     while (1){
         input = getchar();
+        if (len == 6 && input != '\n')
+            continue;
+
         if (input >= 'a' && input <= 'z'){
-            word[len++] = input;
+            game->guessedWords[game->nb_Guesses][len] = input;
+            len++;
         }
         else if (input >= 'A' && input <= 'Z'){
-            word[len++] = tolower(input);
+            game->guessedWords[game->nb_Guesses][len] = tolower(input);
+            len++;
         }
         else if (input == '\n'){
             if (len == 6){
-                word[len] = 0;
-                if (validWord(word, game))
+                if (validWord(game))
                     break;
                 else{
+                    red();
                     printf("\nWord not found try again! or add it to the word bank\n");
-                    for (char i = 0; i < len; i++)
-                        printf("%c", word[i]);
+                    reset();
+                    prettyPrint(game);
+                    continue;
                 }
             }
             else{
+                red();
                 printf("\nword input isn't correct\n");
-                for (char i = 0; i < len; i++)
-                    printf("%c", word[i]);
+                reset();
+                prettyPrint(game);
+                continue;
             }
         }
-        else if (input == '\b' && len > 0)
-            word[len--] = 0;
-        else {
-            printf("\ncontinue typing your word\n");
-            for (char i = 0; i < len; i++)
-                printf("%c", word[i]);
+        else if (input == '\b' && len > 0){
+            game->guessedWords[game->nb_Guesses][--len] = 0;
         }
+        prettyPrint(game);
     }
-    return word;
 }
 
-char* checkWord(char* input, Game* game){
-    char* color = calloc(6, sizeof(char));
+void colorWord(Game* game){
     char m[6] = {-1,}; //-1 not found / 0 found but wrong place / 1 right place
-    char f = 0;
     for (size_t i = 0; i < 6; i++){
-        game->guessedWords[game->nb_Guesses][i] = input[i];
-        if (input[i] == game->Hword[i]){
+        if (game->guessedWords[game->nb_Guesses][i] == game->Hword[i]){
             m[i] = 1;
-            color[i] = 'g';
-            f++;
+            game->colorWords[game->nb_Guesses][i] = 'g';
         }
         else {
-            int change = 0;
             for (size_t j = 0; j < 6; j++){
-                if (input[i] == game->Hword[j]){
+                if (game->guessedWords[game->nb_Guesses][i] == game->Hword[j]){
                     if (m[i] == -1){
                         m[i] = 0;
-                        color[i] = 'y';
-                        change = 1;
+                        game->colorWords[game->nb_Guesses][i] = 'y';
                         break;
                     }
                 }
             }
-            if (!change){
-                color[i] = 'b';
-            }
         }
     }
-    if (strcmp(input, game->Hword) == 0)
+    if (strcmp(game->guessedWords[game->nb_Guesses], game->Hword) == 0)
         game->found = 1;
-    return color;
+    prettyPrint(game);
 }
 
-void yellow(){
-    printf("\033[1;33m");
-}
 
-void green(){
-    printf("\033[1;32m");
-}
-
-void reset(){
-    printf("\033[0m");
-}
-
-void printLine(char* color, Game* game, size_t index){
-    for (size_t i = 0; i < 6; i++){
-        printf("║ ");
-        if (color[i] == 'g') green();
-        else if (color[i] == 'y') yellow();
-        printf("%c ",toupper(game->guessedWords[index][i]));
-        reset();
-    }
-    printf("║\n");
-}
-
-void prettyPrint(char* color, Game* game){
-    system("clear");
-    printf("\n╔═══════════════════════╗\n");
-    printf("║You have %d guesses left║\n", maxGuesses - game->nb_Guesses);
-    printf("╠═══╦═══╦═══╦═══╦═══╦═══╣\n");
-    int i = 0;
-    for (; i < game->nb_Guesses; i++){
-        printLine(color, game, i);
-        if (i == maxGuesses - 1)
-            printf("╚═══╩═══╩═══╩═══╩═══╩═══╝\n");
-        else
-            printf("╠═══╬═══╬═══╬═══╬═══╬═══╣\n");
-    }
-    for (; i < maxGuesses; i++){
-        printf("║   ║   ║   ║   ║   ║   ║\n");
-        if (i == maxGuesses - 1)
-            printf("╚═══╩═══╩═══╩═══╩═══╩═══╝\n");
-        else
-            printf("╠═══╬═══╬═══╬═══╬═══╬═══╣\n");
-    }
-}
 
 char playAgain(){
     char input = 0;
@@ -224,15 +225,14 @@ void GameLoop(char* WBpath){
     Game* game = initGame(WBpath);
     char playing = 1;
     while (playing){
+        prettyPrint(game);
         while (game->nb_Guesses < maxGuesses){
             if (game->found == 1)
                 break;
-            char* input = GetInput(game);
-            char* color = checkWord(input, game);
-            free(input);
+            GetInput(game);
+            colorWord(game);
             game->nb_Guesses++;
-            prettyPrint(color, game);
-            free(color);
+            prettyPrint(game);
         }
         if (game->found)
             printf("wow you won!\n");
@@ -240,7 +240,13 @@ void GameLoop(char* WBpath){
             printf("Tough Luck fella\nThe word was %s\n",
                    game->Hword);
         }
-        playing = playAgain();
+        if (playAgain() == 1){
+            freeGame(game);
+            game = initGame(WBpath);
+        }
+        else {
+            playing = 0;
+        }
     }
     printf("Thanks for playing!\n");
     freeGame(game);
