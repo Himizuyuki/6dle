@@ -200,8 +200,8 @@ void colorWord(Game* game){
         else {
             for (size_t j = 0; j < 6; j++){
                 if (game->guessedWords[game->nb_Guesses][i] == game->Hword[j]){
-                    if (m[i] == -1){
-                        m[i] = 0;
+                    if (m[j] == -1 && m[j] != 1){
+                        m[j] = 0;
                         game->colorWords[game->nb_Guesses][i] = 'y';
                         break;
                     }
@@ -236,7 +236,7 @@ char endGame(Game* game){
     printf("╚═══════════════════════╝\n");
     while(1){
         input = getch();
-        if (input == '\n' || input == 'Y' || input == 'y')
+        if (input == 'Y' || input == 'y')
             return 1;
         else if (input == 'n' || input == 'N')
             return 0;
@@ -255,6 +255,7 @@ void GameLoop(char* WBpath){
             colorWord(game);
             game->nb_Guesses++;
         }
+        prettyPrint(game);
         playing = endGame(game);
     }
     printf("Thanks for playing!\n");
