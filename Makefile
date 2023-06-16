@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS= -Wall -Wextra -std=c99 -pedantic -fsanitize=address
 
-SRC= main.c src/game.c obj/treeGen/tree.c obj/Loader/loader.c
+SRC= main.c src/game.c obj/treeGen/tree.c obj/Loader/loader.c obj/random.c
 OBJ=$(SRC:.c=.o)
 
 all = main clean

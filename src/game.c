@@ -116,7 +116,7 @@ void freeGame(Game* game){
 }
 
 void findRandom(char *word, Tree *wb){
-    int randi;
+    unsigned int randi;
     word[6] = 0;
     for (size_t i = 0; i < 6; i++){
         char m[26] = {0, };
@@ -127,7 +127,7 @@ void findRandom(char *word, Tree *wb){
                 nbW++;
             }
         }
-        randi = rand() % nbW;
+        randi = randomNumber() % nbW;
         word[i] = m[randi] + 'a';
         wb = wb->child[m[randi]];
     }
