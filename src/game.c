@@ -59,13 +59,17 @@ void printLine(Game* game, size_t index){
         printf("║ ");
         if (game->colorWords[index][i] == 'g') green();
         else if (game->colorWords[index][i] == 'y') yellow();
+        else if (game->colorWords[index][i] == 'r') red();
         if (game->guessedWords[index][i] == 0)
             printf("  ");
         else
             printf("%c ",toupper(game->guessedWords[index][i]));
         reset();
     }
-    printf("║\n");
+    if (index == game->nb_Guesses)
+        printf("║«\n");
+    else
+        printf("║\n");
 }
 
 void prettyPrint(Game* game){
@@ -75,6 +79,8 @@ void prettyPrint(Game* game){
     printf("╠═══╦═══╦═══╦═══╦═══╦═══╣\n");
     int i = 0;
     for (; i <= game->nb_Guesses; i++){
+        if (i == maxGuesses)
+            continue;
         printLine(game, i);
         if (i == maxGuesses - 1)
             printf("╚═══╩═══╩═══╩═══╩═══╩═══╝\n");
@@ -176,6 +182,15 @@ void GetInput (Game* game){
                 if (validWord(game))
                     break;
                 else{
+                    for (size_t i = 0; i < 6; i++){
+                        game->colorWords[game->nb_Guesses][i] = 'r';
+                    }
+                    prettyPrint(game);
+                    sleep(1);
+                    for (size_t i = 0; i < 6; i++){
+                        game->colorWords[game->nb_Guesses][i] = 'b';
+                    }
+                    prettyPrint(game);
                     continue;
                 }
             }
@@ -218,6 +233,8 @@ void colorWord(Game* game){
 
 char endGame(Game* game){
     system("clear");
+    //game->nb_Guesses--;
+    prettyPrint(game);
     if (game->found == 0){
         printf("╔═══════════════════════╗\n");
         printf("║     The word was      ║\n");
@@ -236,7 +253,7 @@ char endGame(Game* game){
     printf("╚═══════════════════════╝\n");
     while(1){
         input = getch();
-        if (input == 'Y' || input == 'y')
+        if (input == 'y' || input == 'Y')
             return 1;
         else if (input == 'n' || input == 'N')
             return 0;
@@ -254,9 +271,15 @@ void GameLoop(char* WBpath){
             GetInput(game);
             colorWord(game);
             game->nb_Guesses++;
+            if (game->nb_Guesses != maxGuesses)
+                prettyPrint(game);
         }
         prettyPrint(game);
         playing = endGame(game);
+        if (playing == 1){
+            freeGame(game);
+            game = initGame(WBpath);
+        }
     }
     printf("Thanks for playing!\n");
     freeGame(game);
