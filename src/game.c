@@ -71,7 +71,7 @@ void prettyPrint(Game* game){
     printf("║You have %d guesses left║\n", maxGuesses - game->nb_Guesses);
     printf("╠═══╦═══╦═══╦═══╦═══╦═══╣\n");
     int i = 0;
-    for (; i < game->nb_Guesses; i++){
+    for (; i <= game->nb_Guesses; i++){
         printLine(game, i);
         if (i == maxGuesses - 1)
             printf("╚═══╩═══╩═══╩═══╩═══╩═══╝\n");
@@ -179,7 +179,7 @@ void GetInput (Game* game){
                 continue;
             }
         }
-        else if (input == '\b' && len > 0){
+        else if (input == '*' && len > 0){
             game->guessedWords[game->nb_Guesses][--len] = 0;
         }
         prettyPrint(game);
