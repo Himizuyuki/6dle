@@ -2,7 +2,10 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
+#include <unistd.h>
 #include <string.h>
+#include <termios.h>
 
 /* find a random word to choose from the tree struct or the word bank
 * check if an inputted word is added
@@ -143,19 +146,28 @@ int validWord(Game* game){
     return 1;
 }
 
+int getch(){
+    struct termios oldtc, newtc;
+    int ch;
+    tcgetattr(STDIN_FILENO, &oldtc);
+    newtc = oldtc;
+    newtc.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newtc);
+    ch = getchar();
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldtc);
+    return ch;
+}
+
 void GetInput (Game* game){
-    char input = 0;
+    int input = 0;
     char len = 0;
     while (1){
-        input = getchar();
-        if (len == 6 && input != '\n')
-            continue;
-
-        if (input >= 'a' && input <= 'z'){
+        input = getch();
+        if (input >= 'a' && input <= 'z' && len < 6){
             game->guessedWords[game->nb_Guesses][len] = input;
             len++;
         }
-        else if (input >= 'A' && input <= 'Z'){
+        else if (input >= 'A' && input <= 'Z' && len < 6){
             game->guessedWords[game->nb_Guesses][len] = tolower(input);
             len++;
         }
@@ -164,18 +176,10 @@ void GetInput (Game* game){
                 if (validWord(game))
                     break;
                 else{
-                    red();
-                    printf("\nWord not found try again! or add it to the word bank\n");
-                    reset();
-                    prettyPrint(game);
                     continue;
                 }
             }
             else{
-                red();
-                printf("\nword input isn't correct\n");
-                reset();
-                prettyPrint(game);
                 continue;
             }
         }
@@ -212,13 +216,31 @@ void colorWord(Game* game){
 
 
 
-char playAgain(){
-    char input = 0;
-    while (input != 'Y' && input != 'n'){
-        printf("Do you want to play again? (Y or n) ");
-        scanf("%c", &input);
+char endGame(Game* game){
+    system("clear");
+    if (game->found == 0){
+        printf("╔═══════════════════════╗\n");
+        printf("║     The word was      ║\n");
+        printf("║        %s         ║\n", game->Hword);
+        printf("╚═══════════════════════╝\n");
     }
-    return (input == 'Y') ? 1 : 0;
+    else {
+        printf("╔═══════════════════════╗\n");
+        printf("║ Congrats you got it ! ║\n");
+        printf("╚═══════════════════════╝\n");
+    }
+    int input = 0;
+    printf("╔═══════════════════════╗\n");
+    printf("║Want to play some more?║\n");
+    printf("║     (Y)es | (n)o      ║\n");
+    printf("╚═══════════════════════╝\n");
+    while(1){
+        input = getch();
+        if (input == '\n' || input == 'Y' || input == 'y')
+            return 1;
+        else if (input == 'n' || input == 'N')
+            return 0;
+    }
 }
 
 void GameLoop(char* WBpath){
@@ -232,21 +254,8 @@ void GameLoop(char* WBpath){
             GetInput(game);
             colorWord(game);
             game->nb_Guesses++;
-            prettyPrint(game);
         }
-        if (game->found)
-            printf("wow you won!\n");
-        else {
-            printf("Tough Luck fella\nThe word was %s\n",
-                   game->Hword);
-        }
-        if (playAgain() == 1){
-            freeGame(game);
-            game = initGame(WBpath);
-        }
-        else {
-            playing = 0;
-        }
+        playing = endGame(game);
     }
     printf("Thanks for playing!\n");
     freeGame(game);
