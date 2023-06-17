@@ -1,4 +1,5 @@
 #include "game.h"
+#include <stdio.h>
 
 
 /* find a random word to choose from the tree struct or the word bank
@@ -92,6 +93,65 @@ void prettyPrint(Game* game){
     }
 }
 
+void setCharColor(Game* game, char c){
+    char color = game->colorLetters[c - 'a'];
+    switch (color) {
+        case 'y':
+            yellow();
+            break;
+        case 'g':
+            green();
+            break;
+        default:
+            reset();
+            break;
+    }
+    printf("%c ", c);
+}
+
+void printKeys(Game* game){
+    // QWERTY Layout
+    // First ROW
+    printf("   ");
+    setCharColor(game, 'q');
+    setCharColor(game, 'w');
+    setCharColor(game, 'e');
+    setCharColor(game, 'r');
+    setCharColor(game, 't');
+    setCharColor(game, 'y');
+    setCharColor(game, 'u');
+    setCharColor(game, 'i');
+    setCharColor(game, 'o');
+    setCharColor(game, 'p');
+    printf("\n");
+
+    // Second Row
+    printf("    ");
+    setCharColor(game, 'a');
+    setCharColor(game, 's');
+    setCharColor(game, 'd');
+    setCharColor(game, 'f');
+    setCharColor(game, 'g');
+    setCharColor(game, 'h');
+    setCharColor(game, 'j');
+    setCharColor(game, 'k');
+    setCharColor(game, 'l');
+    printf("\n");
+
+    // Thrid Row
+    printf("      ");
+    setCharColor(game, 'z');
+    setCharColor(game, 'x');
+    setCharColor(game, 'c');
+    setCharColor(game, 'v');
+    setCharColor(game, 'b');
+    setCharColor(game, 'n');
+    setCharColor(game, 'm');
+    printf("\n");
+
+    reset();
+}
+
 void findRandom(char* word, Tree *wb);
 
 Game* initGame(char* WBpath){
@@ -108,6 +168,9 @@ Game* initGame(char* WBpath){
         for (size_t j = 0; j < 6; j++){
             game->colorWords[i][j] = 'b';
         }
+    }
+    for (size_t i = 0; i < 26; i++){
+        game->colorLetters[i] = 'b';
     }
     findRandom(game->Hword, game->WB);
     return game;
@@ -188,6 +251,7 @@ void GetInput (Game* game){
                         game->colorWords[game->nb_Guesses][i] = 'b';
                     }
                     prettyPrint(game);
+                    printKeys(game);
                     continue;
                 }
             }
@@ -199,6 +263,7 @@ void GetInput (Game* game){
             game->guessedWords[game->nb_Guesses][--len] = 0;
         }
         prettyPrint(game);
+        printKeys(game);
     }
 }
 
@@ -216,6 +281,7 @@ void colorWord(Game* game){
             mH[game->Hword[i] - 'a']--;
             mG[game->Hword[i] - 'a']--;
             
+            game->colorLetters[game->Hword[i] - 'a'] = 'g';
             game->colorWords[game->nb_Guesses][i] = 'g';
         }    
     }
@@ -230,28 +296,13 @@ void colorWord(Game* game){
                     mG[game->guessedWords[game->nb_Guesses][i] - 'a']--;
                     mH[game->Hword[j] - 'a']--;
                     game->colorWords[game->nb_Guesses][i] = 'y';
+                    if (game->colorLetters[game->Hword[j] - 'a'] != 'g')
+                        game->colorLetters[game->Hword[j] - 'a'] = 'y';
                     break;
                 }
             }
         }
     }
-    /*for (size_t i = 0; i < 6; i++){
-        if (game->guessedWords[game->nb_Guesses][i] == game->Hword[i]){
-            m[i] = 1;
-            game->colorWords[game->nb_Guesses][i] = 'g';
-        }
-        else {
-            for (size_t j = 0; j < 6; j++){
-                if (game->guessedWords[game->nb_Guesses][i] == game->Hword[j]){
-                    if (m[j] == -1 && m[j] != 1){
-                        m[j] = 0;
-                        game->colorWords[game->nb_Guesses][i] = 'y';
-                        break;
-                    }
-                }
-            }
-        }
-    }*/
     if (strcmp(game->guessedWords[game->nb_Guesses], game->Hword) == 0)
         game->found = 1;
 }
@@ -260,7 +311,6 @@ void colorWord(Game* game){
 
 char endGame(Game* game){
     system("clear");
-    //game->nb_Guesses--;
     prettyPrint(game);
     if (game->found == 0){
         printf("╔═══════════════════════╗\n");
@@ -292,16 +342,20 @@ void GameLoop(char* WBpath){
     char playing = 1;
     while (playing){
         prettyPrint(game);
+        printKeys(game);
         while (game->nb_Guesses < maxGuesses){
             if (game->found == 1)
                 break;
             GetInput(game);
             colorWord(game);
             game->nb_Guesses++;
-            if (game->nb_Guesses != maxGuesses)
+            if (game->nb_Guesses != maxGuesses){
                 prettyPrint(game);
+                printKeys(game);
+            }
         }
         prettyPrint(game);
+        printKeys(game);
         playing = endGame(game);
         if (playing == 1){
             freeGame(game);
