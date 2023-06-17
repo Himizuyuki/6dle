@@ -12,6 +12,9 @@
 #include <err.h>
 #include <ctype.h>
 #include <string.h>
+#include <stddef.h>
+#include <unistd.h>
+#include <termios.h>
 
 typedef struct Game {
     Tree* WB; // Word Bank
