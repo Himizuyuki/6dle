@@ -68,6 +68,8 @@ void printLine(Game* game, size_t index){
 
 void prettyPrint(Game* game){
     system("clear");
+    //printf("%s\n", game->Hword);
+    //printf("%s\n", game->guessedWords[game->nb_Guesses]);
     printf("╔═══════════════════════╗\n");
     printf("║You have %d guesses left║\n", maxGuesses - game->nb_Guesses);
     printf("╠═══╦═══╦═══╦═══╦═══╦═══╣\n");
@@ -201,8 +203,39 @@ void GetInput (Game* game){
 }
 
 void colorWord(Game* game){
-    char m[6] = {-1,}; //-1 not found / 0 found but wrong place / 1 right place
+    // Create a histogram of letters for both hidden and input word
+    char mH[26] = {0,};
+    char mG[26] = {0,};
     for (size_t i = 0; i < 6; i++){
+        mH[game->Hword[i] - 'a']++;
+        mG[game->guessedWords[game->nb_Guesses][i] - 'a']++;
+    }
+    // loop for correct position words
+    for (size_t i = 0; i < 6; i++){
+        if (game->guessedWords[game->nb_Guesses][i] == game->Hword[i]){
+            mH[game->Hword[i] - 'a']--;
+            mG[game->Hword[i] - 'a']--;
+            
+            game->colorWords[game->nb_Guesses][i] = 'g';
+        }    
+    }
+
+    //loop for letters at the wrong place
+    for (size_t i = 0; i < 6; i++){
+        if (game->colorWords[game->nb_Guesses][i] == 'b'){
+            for (size_t j = 0; j < 6; j++){
+                if (game->guessedWords[game->nb_Guesses][i] == game->Hword[j] &&
+                mH[game->Hword[j] - 'a'] > 0){
+
+                    mG[game->guessedWords[game->nb_Guesses][i] - 'a']--;
+                    mH[game->Hword[j] - 'a']--;
+                    game->colorWords[game->nb_Guesses][i] = 'y';
+                    break;
+                }
+            }
+        }
+    }
+    /*for (size_t i = 0; i < 6; i++){
         if (game->guessedWords[game->nb_Guesses][i] == game->Hword[i]){
             m[i] = 1;
             game->colorWords[game->nb_Guesses][i] = 'g';
@@ -218,7 +251,7 @@ void colorWord(Game* game){
                 }
             }
         }
-    }
+    }*/
     if (strcmp(game->guessedWords[game->nb_Guesses], game->Hword) == 0)
         game->found = 1;
 }
@@ -271,7 +304,9 @@ void GameLoop(char* WBpath){
         prettyPrint(game);
         playing = endGame(game);
         if (playing == 1){
-            for (size_t i = 0; i < maxGuesses; i++){
+            freeGame(game);
+            game = initGame(WBpath);
+            /*for (size_t i = 0; i < maxGuesses; i++){
                 for (size_t j = 0; j < 7; j++){
                     game->guessedWords[i][j] = 0;
                 }
@@ -280,7 +315,7 @@ void GameLoop(char* WBpath){
                 }
             }
             findRandom(game->Hword, game->WB);
-            game->nb_Guesses = 0;
+            game->nb_Guesses = 0;*/
         }
     }
     printf("Thanks for playing!\n");
