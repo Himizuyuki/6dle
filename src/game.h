@@ -1,7 +1,7 @@
 #ifndef GAME_H
 #define GAME_H
 
-#define maxGuesses 6
+#define maxGuesses 7
 
 #include "../obj/treeGen/tree.h"
 #include "../obj/Loader/loader.h"

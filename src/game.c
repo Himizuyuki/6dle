@@ -1,5 +1,5 @@
 #include "game.h"
-#include <stdio.h>
+#include <string.h>
 
 
 /* find a random word to choose from the tree struct or the word bank
@@ -45,11 +45,15 @@ void green(){
     printf("\033[1;32m");
 }
 
+void black(){
+    printf("\033[1;30m");
+}
+
 void reset(){
     printf("\033[0m");
 }
 
-void printLine(Game* game, size_t index){
+void printLine(Game* game, int index){
     for (size_t i = 0; i < 6; i++){
         printf("║ ");
         if (game->colorWords[index][i] == 'g') green();
@@ -102,6 +106,9 @@ void setCharColor(Game* game, char c){
         case 'g':
             green();
             break;
+        case 'w':
+            black();
+            break;
         default:
             reset();
             break;
@@ -150,6 +157,15 @@ void printKeys(Game* game){
     printf("\n");
 
     reset();
+}
+
+void blackenKeys(Game* game){
+    for (size_t i = 0; i < 6; i++){
+        if (game->colorWords[game->nb_Guesses][i] == 'b'){
+            int index = game->guessedWords[game->nb_Guesses][i] - 'a';
+            game->colorLetters[index] = 'w';
+        }
+    }
 }
 
 void findRandom(char* word, Tree *wb);
@@ -224,6 +240,15 @@ int getch(){
     return ch;
 }
 
+char isDuplicate(Game* game){
+    for (int i = 0; i < game->nb_Guesses; i++){
+        if (strcmp(game->guessedWords[i], game->guessedWords[game->nb_Guesses]) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+
 void GetInput (Game* game){
     int input = 0;
     char len = 0;
@@ -239,13 +264,14 @@ void GetInput (Game* game){
         }
         else if (input == '\n'){
             if (len == 6){
-                if (validWord(game))
+                if (validWord(game) && !isDuplicate(game))
                     break;
                 else{
                     for (size_t i = 0; i < 6; i++){
                         game->colorWords[game->nb_Guesses][i] = 'r';
                     }
                     prettyPrint(game);
+                    printKeys(game);
                     sleep(1);
                     for (size_t i = 0; i < 6; i++){
                         game->colorWords[game->nb_Guesses][i] = 'b';
@@ -347,6 +373,7 @@ void GameLoop(char* WBpath){
             if (game->found == 1)
                 break;
             GetInput(game);
+            blackenKeys(game);
             colorWord(game);
             game->nb_Guesses++;
             if (game->nb_Guesses != maxGuesses){
