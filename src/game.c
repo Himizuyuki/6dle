@@ -174,6 +174,7 @@ Game* initGame(char* WBpath){
     
     Game* game = malloc(sizeof(Game));
     game->WB = Tloader(WBpath);
+    game->Solutions = Tloader("obj/solutions.txt");
     game->found = 0;
     game->nb_Guesses = 0;
     
@@ -188,13 +189,15 @@ Game* initGame(char* WBpath){
     for (size_t i = 0; i < 26; i++){
         game->colorLetters[i] = 'b';
     }
-    findRandom(game->Hword, game->WB);
+    findRandom(game->Hword, game->Solutions);
     return game;
 }
 
 void freeGame(Game* game){
     freeTree(game->WB);
+    freeTree(game->Solutions);
     free(game);
+
 }
 
 void findRandom(char *word, Tree *wb){
@@ -285,7 +288,7 @@ void GetInput (Game* game){
                 continue;
             }
         }
-        else if (input == '*' && len > 0){
+        else if ((input == ']' || input == '*')  && len > 0){
             game->guessedWords[game->nb_Guesses][--len] = 0;
         }
         prettyPrint(game);

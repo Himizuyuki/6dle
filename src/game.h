@@ -18,6 +18,7 @@
 
 typedef struct Game {
     Tree* WB; // Word Bank
+    Tree* Solutions; //Correct Words
     int nb_Guesses;
     char Hword[7];
     char guessedWords[maxGuesses][7];
