@@ -204,9 +204,9 @@ void findRandom(char *word, Tree *wb){
     unsigned int randi;
     word[6] = 0;
     for (size_t i = 0; i < 6; i++){
-        char m[26] = {0, };
-        char nbW = 0;
-        for (char j = 0; j < 26; j++){
+        unsigned char m[26] = {0, };
+        unsigned char nbW = 0;
+        for (unsigned char j = 0; j < 26; j++){
             if (wb->child[j] != NULL){
                 m[nbW] = j;
                 nbW++;
@@ -254,7 +254,7 @@ char isDuplicate(Game* game){
 
 void GetInput (Game* game){
     int input = 0;
-    char len = 0;
+    unsigned char len = 0;
     while (1){
         input = getch();
         if (input >= 'a' && input <= 'z' && len < 6){
