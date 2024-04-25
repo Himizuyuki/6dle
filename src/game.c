@@ -405,9 +405,3 @@ void GameLoop(char* WBpath){
     printf("Thanks for playing!\n");
     freeGame(game);
 }
-
-
-
-
-
-

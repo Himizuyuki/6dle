@@ -16,6 +16,7 @@ Tree* Tloader(const char* path) {
     // Call the shell script to remove invalid words
     char command[100];
     sprintf(command, "./remove_invalid_words.sh %s", path);
+    // This shit is so fucking exploitable
     system(command);
 
     Tree* tree = initTree();
