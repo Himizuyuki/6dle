@@ -390,16 +390,6 @@ void GameLoop(char* WBpath){
         if (playing == 1){
             freeGame(game);
             game = initGame(WBpath);
-            /*for (size_t i = 0; i < maxGuesses; i++){
-                for (size_t j = 0; j < 7; j++){
-                    game->guessedWords[i][j] = 0;
-                }
-                for (size_t j = 0; j < 6; j++){
-                    game->colorWords[i][j] = 'b';
-                }
-            }
-            findRandom(game->Hword, game->WB);
-            game->nb_Guesses = 0;*/
         }
     }
     printf("Thanks for playing!\n");
