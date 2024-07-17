@@ -1,5 +1,6 @@
 #include "src/game.h"
 
-int main(){
+int main()
+{
     GameLoop("obj/wordBank.txt");
 }
