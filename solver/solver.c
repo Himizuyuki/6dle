@@ -1,41 +1,25 @@
 #include "solver.h"
+#include <stdlib.h>
 
 /* TODO:
  *  Take a random word since "any" word can be a hidden word from the word bank
  *  you go through the whole word bank and remove the possible outcomes
  */
 
-int delContainsAux(char c, Tree *wb)
+struct Solver* initSolver(char* WBPath, char nbWords)
 {
-    return 0;
+    struct Solver* solver = malloc(sizeof(struct Solver));
+    solver->wordBank = Tloader(WBPath);
+    solver->nbPreviousWords = 0;
+    solver->previousWords = malloc(sizeof(char*) * nbWords);
+    solver->wordLength = 6;
+    return solver;
 }
 
-void delContains(char c, Tree *wb)
+// choose a word from the wordBank
+char* chooseWord(struct Solver* solver)
 {
-    delContainsAux(c, wb);
-}
-
-// Find a random Word withing the word bank
-void findRandom(char *word, Tree *wb)
-{
-    unsigned int randi;
-    word[6] = 0;
-    for (size_t i = 0; i < 6; i++)
-    {
-        char m[26] = {
-            0,
-        };
-        char nbW = 0;
-        for (char j = 0; j < 26; j++)
-        {
-            if (wb->child[j] != NULL)
-            {
-                m[nbW] = j;
-                nbW++;
-            }
-        }
-        randi = randomNumber() % nbW;
-        word[i] = m[randi] + 'a';
-        wb = wb->child[m[randi]];
-    }
+    char* res = calloc(solver->wordLength + 1, sizeof(char));
+    solver->previousWords[solver->nbPreviousWords++] = res;
+    return res;
 }

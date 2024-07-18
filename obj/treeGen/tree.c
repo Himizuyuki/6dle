@@ -27,13 +27,13 @@ int addWord(char *word, Tree *tree)
     Tree *tmp = tree;
     for (size_t i = 0; i < 6; i++)
     {
-        int index =
-            word[i] - 'a'; // calculate the child index based on the letter
+        // calculate the child index based on the letter
+        int index = word[i] - 'a'; 
 
         if (tmp->child[index] == NULL)
         {
-            tmp->child[index] =
-                initTree(); // create a new child if it doesn't exist
+            // create a new child if it doesn't exist
+            tmp->child[index] = initTree();
             tmp->child[index]->depth = tmp->depth + 1;
         }
 
