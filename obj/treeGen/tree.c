@@ -28,7 +28,7 @@ int addWord(char *word, Tree *tree)
     for (size_t i = 0; i < 6; i++)
     {
         // calculate the child index based on the letter
-        int index = word[i] - 'a'; 
+        int index = word[i] - 'a';
 
         if (tmp->child[index] == NULL)
         {
@@ -162,7 +162,7 @@ void printTree(Tree *tree)
     printf("\n");
 }
 
-int removeChar(char ch, Tree* tree)
+int removeChar(char ch, Tree *tree)
 {
     if (!tree)
     {
@@ -180,7 +180,7 @@ int removeChar(char ch, Tree* tree)
     }
 }
 
-int removeCharFromDepthAux(char ch, Tree* tree, int depth)
+int removeCharFromDepthAux(char ch, Tree *tree, int depth)
 {
     if (!tree)
     {
@@ -193,12 +193,14 @@ int removeCharFromDepthAux(char ch, Tree* tree, int depth)
     int res = 0;
     for (size_t i = 0; i < 26; i++)
     {
-        res = tree->child[i] != NULL ? removeCharFromDepthAux(ch, tree->child[i], depth - 1) || res : res;
+        res = tree->child[i] != NULL
+            ? removeCharFromDepthAux(ch, tree->child[i], depth - 1) || res
+            : res;
     }
     return res;
 }
 
-int removeCharFromDepth(char ch, Tree* tree, int depth)
+int removeCharFromDepth(char ch, Tree *tree, int depth)
 {
     if (!tree || depth < 0 || depth > 6)
     {
@@ -206,4 +208,3 @@ int removeCharFromDepth(char ch, Tree* tree, int depth)
     }
     return removeCharFromDepthAux(ch, tree, depth);
 }
-

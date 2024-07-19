@@ -2,8 +2,8 @@
 #include <criterion/logging.h>
 #include <criterion/redirect.h>
 
-#include "queue.h"
 #include "../Loader/loader.h"
+#include "queue.h"
 
 TestSuite(Tests);
 
@@ -40,7 +40,7 @@ Test(Tests, enqueue_One_Element)
     cr_assert_eq(q->tail, NULL, "tail is not NULL");
     cr_assert_eq(q->size, 0, "size is not 0");
 
-    Tree* tree = Tloader("SmallSample.txt");
+    Tree *tree = Tloader("SmallSample.txt");
     cr_assert_not_null(tree, "tree is NULL");
     fifo_push(q, tree);
 
@@ -60,11 +60,11 @@ Test(Tests, enqueue_Multiple_Elements_From_Root_Tree)
     cr_assert_eq(q->tail, NULL, "tail is not NULL");
     cr_assert_eq(q->size, 0, "size is not 0");
 
-    Tree* tree = Tloader("SmallSample.txt");
+    Tree *tree = Tloader("SmallSample.txt");
     cr_assert_not_null(tree, "tree is NULL");
-    Tree* subtree = tree->child['i' - 'a'];
+    Tree *subtree = tree->child['i' - 'a'];
     cr_assert_not_null(subtree, "subtree is NULL");
-    Tree* subtree2 = tree->child['t' - 'a'];
+    Tree *subtree2 = tree->child['t' - 'a'];
     cr_assert_not_null(subtree2, "subtree2 is NULL");
 
     fifo_push(q, tree);
@@ -87,11 +87,11 @@ Test(Tests, enqueue_Multiple_Elements_From_SubTree)
     cr_assert_eq(q->tail, NULL, "tail is not NULL");
     cr_assert_eq(q->size, 0, "size is not 0");
 
-    Tree* tree = Tloader("SmallSample.txt");
+    Tree *tree = Tloader("SmallSample.txt");
     cr_assert_not_null(tree, "tree is NULL");
-    Tree* subtree = tree->child['i' - 'a'];
+    Tree *subtree = tree->child['i' - 'a'];
     cr_assert_not_null(subtree, "subtree is NULL");
-    Tree* subtree2 = subtree->child['n' - 'a'];
+    Tree *subtree2 = subtree->child['n' - 'a'];
     cr_assert_not_null(subtree2, "subtree2 is NULL");
 
     fifo_push(q, subtree);
@@ -113,7 +113,7 @@ Test(Tests, pop_One_Element)
     cr_assert_eq(q->tail, NULL, "tail is not NULL");
     cr_assert_eq(q->size, 0, "size is not 0");
 
-    Tree* tree = Tloader("SmallSample.txt");
+    Tree *tree = Tloader("SmallSample.txt");
     cr_assert_not_null(tree, "tree is NULL");
     fifo_push(q, tree);
 
@@ -121,7 +121,7 @@ Test(Tests, pop_One_Element)
     cr_assert_not_null(q->head, "head is NULL");
     cr_assert_not_null(q->tail, "tail is NULL");
 
-    Tree* popped = fifo_pop(q);
+    Tree *popped = fifo_pop(q);
     cr_assert_eq(q->size, 0, "size is not 0");
     cr_assert_eq(popped, tree,
                  "popped element is not the same as the pushed one");
@@ -138,11 +138,11 @@ Test(Tests, pop_Multple_Elements)
     cr_assert_eq(q->tail, NULL, "tail is not NULL");
     cr_assert_eq(q->size, 0, "size is not 0");
 
-    Tree* tree = Tloader("SmallSample.txt");
+    Tree *tree = Tloader("SmallSample.txt");
     cr_assert_not_null(tree, "tree is NULL");
-    Tree* subtree = tree->child['i' - 'a'];
+    Tree *subtree = tree->child['i' - 'a'];
     cr_assert_not_null(subtree, "subtree is NULL");
-    Tree* subtree2 = tree->child['t' - 'a'];
+    Tree *subtree2 = tree->child['t' - 'a'];
     cr_assert_not_null(subtree2, "subtree2 is NULL");
 
     fifo_push(q, tree);
@@ -153,7 +153,7 @@ Test(Tests, pop_Multple_Elements)
     cr_assert_not_null(q->head, "head is NULL");
     cr_assert_not_null(q->tail, "tail is NULL");
 
-    Tree* popped = fifo_pop(q);
+    Tree *popped = fifo_pop(q);
     cr_assert_eq(q->size, 2, "size is not 2");
     cr_assert_eq(popped, tree,
                  "popped element is not the same as the pushed one");
