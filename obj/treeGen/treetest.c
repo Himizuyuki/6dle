@@ -27,11 +27,16 @@ int main()
 
     printTree(tree);
 
-    // removeWord("cheats", tree);
+    removeChar('c', tree);
 
     printTree(tree);
+
+    removeCharFromDepth('t', tree, 5);
+
+    printTree(tree);
+
     // Free the struct Tree
     freeTree(tree);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
