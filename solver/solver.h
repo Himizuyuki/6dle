@@ -16,6 +16,7 @@ struct Solver
     size_t wordLength;
 };
 
-struct Solver* initSolver(char* WBPath, char nbWords);
+struct Solver* initSolver(char *WB_PATH, char nbWords);
+void freeSolver(struct Solver *solver);
 
 #endif // DEBUG
