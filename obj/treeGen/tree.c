@@ -161,3 +161,49 @@ void printTree(Tree *tree)
     printTreeAux(tree, buffer, 0);
     printf("\n");
 }
+
+int removeChar(char ch, Tree* tree)
+{
+    if (!tree)
+    {
+        return 0;
+    }
+    if (tree->child[ch - 'a'] == NULL)
+    {
+        return 0;
+    }
+    else
+    {
+        freeTree(tree->child[ch - 'a']);
+        tree->child[ch - 'a'] = NULL;
+        return 1;
+    }
+}
+
+int removeCharFromDepthAux(char ch, Tree* tree, int depth)
+{
+    if (!tree)
+    {
+        return 0;
+    }
+    if (depth == 1)
+    {
+        return removeChar(ch, tree);
+    }
+    int res = 0;
+    for (size_t i = 0; i < 26; i++)
+    {
+        res = tree->child[i] != NULL ? removeCharFromDepthAux(ch, tree->child[i], depth - 1) || res : res;
+    }
+    return res;
+}
+
+int removeCharFromDepth(char ch, Tree* tree, int depth)
+{
+    if (!tree || depth < 0 || depth > 6)
+    {
+        return 0;
+    }
+    return removeCharFromDepthAux(ch, tree, depth);
+}
+

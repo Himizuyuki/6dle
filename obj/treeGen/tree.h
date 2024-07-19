@@ -26,6 +26,10 @@ int addWord(char* word, Tree* tree);
 // remove a Word to the tree supposing the word is 6 letters long
 int removeWord(char* word, Tree* tree);
 
+int removeChar(char ch, Tree* tree);
+int removeCharTotal(char ch, Tree* tree);
+int removeCharFromDepth(char ch, Tree* tree, int depth);
+
 // free the whole structure 
 void freeTree(Tree* tree);
 
