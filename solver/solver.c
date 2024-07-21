@@ -3,14 +3,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct Solver *initSolver(char *WB_PATH, char nbWords)
+struct Solver *initSolver(Tree *tree, char nbWords)
 {
     struct Solver *solver = malloc(sizeof(struct Solver));
-    solver->wordBank = Tloader(WB_PATH);
+    solver->wordBank = tree;
     if (!solver->wordBank)
     {
         free(solver);
-        sprintf(stderr, "Error: could not load word bank from %s\n", WB_PATH);
+        sprintf(stderr, "Error: could not load word bank from game");
         return NULL;
     }
     solver->nbPreviousWords = 0;
@@ -63,4 +63,18 @@ char *chooseRandomWord(struct Solver *solver)
         calloc(solver->wordLength + 1, sizeof(char));
     chooseRandomWordAux(solver);
     return solver->previousWords[solver->nbPreviousWords++];
+}
+
+void SolverLoop(Game *game)
+{
+    struct Solver *solver = initSolver(game->WB, maxGuesses);
+    if (!solver)
+    {
+        return;
+    }
+    // Pure Random Approach lol
+    for (size_t i = 0; i < maxGuesses; i++)
+    {
+        char *word = chooseRandomWord(solver);
+    }
 }

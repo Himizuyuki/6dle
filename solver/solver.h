@@ -4,6 +4,7 @@
 #include "../obj/random.h"
 #include "../obj/Loader/loader.h"
 #include "../obj/treeGen/tree.h"
+#include "../src/game.h"
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -16,7 +17,7 @@ struct Solver
     size_t wordLength;
 };
 
-struct Solver* initSolver(char *WB_PATH, char nbWords);
+struct Solver *initSolver(Tree *tree, char nbWords);
 void freeSolver(struct Solver *solver);
 
 #endif // DEBUG

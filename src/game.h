@@ -27,15 +27,20 @@ typedef struct Game {
     char found; // 0 -> false | 1 -> true
 }Game;
 
+struct SendInfo {
+    int nb_Guesses;
+    char colorWords[maxGuesses][6];
+};
+
 Game* initGame(char* WBpath);
 
 void freeGame(Game* game);
 
 void findRandom(char* word, Tree* wb);
 
-char* checkWord(char* input, Game* game);
-
 void prettyPrint(Game* game);
+
+struct SendInfo *getInfo();
 
 void GameLoop(char* WBpath);
 

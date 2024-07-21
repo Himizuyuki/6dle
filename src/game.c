@@ -39,6 +39,8 @@ the terminal
 *       -> free the GTree
 *       -> free Game struct
 */
+static struct SendInfo *info = NULL;
+
 void yellow()
 {
     printf("\033[1;33m");
@@ -427,6 +429,24 @@ char endGame(Game *game)
         else if (input == 'n' || input == 'N')
             return 0;
     }
+}
+
+void UpdateInfo(Game *game)
+{
+    info = info != NULL ? malloc(sizeof(struct SendInfo)) : info;
+    info->nb_Guesses = game->nb_Guesses;
+    for (size_t i = 0; i < maxGuesses; i++)
+    {
+        for (size_t j = 0; j < 6; j++)
+        {
+            info->colorWords[i][j] = game->colorWords[i][j];
+        }
+    }
+}
+
+struct SendInfo *getInfo()
+{
+    return info;
 }
 
 void GameLoop(char *WBpath)
