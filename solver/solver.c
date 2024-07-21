@@ -34,7 +34,9 @@ void chooseRandomWordAux(struct Solver *solver)
     Tree *wordBank = solver->wordBank;
     for (size_t i = 0; i < solver->wordLength; i++)
     {
-        char arr[26] = {0,};
+        char arr[26] = {
+            0,
+        };
         size_t k = 0;
         for (size_t j = 0; j < 26; j++)
         {
@@ -57,7 +59,8 @@ void chooseRandomWordAux(struct Solver *solver)
 // choose a word from the wordBank
 char *chooseRandomWord(struct Solver *solver)
 {
-    solver->previousWords[solver->nbPreviousWords] = calloc(solver->wordLength + 1, sizeof(char));
+    solver->previousWords[solver->nbPreviousWords] =
+        calloc(solver->wordLength + 1, sizeof(char));
     chooseRandomWordAux(solver);
     return solver->previousWords[solver->nbPreviousWords++];
 }
