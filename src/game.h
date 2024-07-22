@@ -42,8 +42,6 @@ void prettyPrint(Game* game);
 
 void colorWord(Game *game);
 
-struct SendInfo *getInfo();
-
 void GameLoop(char* WBpath);
 
 #endif 

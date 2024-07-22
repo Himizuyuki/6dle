@@ -65,6 +65,41 @@ char *chooseRandomWord(struct Solver *solver)
     return solver->previousWords[solver->nbPreviousWords++];
 }
 
+void updateTree(struct Solver *solver, struct SendInfo *info)
+{
+    Tree *wordBank = solver->wordBank;
+    for (size_t i = 0; i < solver->wordLength; i++)
+    {
+        if (info->colorWords[info->nb_Guesses][i] == 'b')
+        {
+            removeChar(solver->previousWords[info->nb_Guesses][i], wordBank);
+        }
+        else if (info->colorWords[info->nb_Guesses][i] == 'y')
+        {
+            removeCharFromDepth(solver->previousWords[info->nb_Guesses][i], wordBank, i);
+        }
+        else if (info->colorWords[info->nb_Guesses][i] == 'g')
+        {
+            for (size_t j = 0; j < 26; j++)
+            {
+                if (wordBank->child[j] && j != info->colorWords[info->nb_Guesses][i] - 'a')
+                {
+                    removeCharFromDepth(j + 'a', wordBank, i);
+                }
+            }
+        }
+    }
+}
+
+void UpdateInfo(Game *game, struct SendInfo *info)
+{
+    info->nb_Guesses = game->nb_Guesses;
+    for (size_t j = 0; j < 6; j++)
+    {
+        info->colorWords[game->nb_Guesses][j] = game->colorWords[game->nb_Guesses][j];
+    }
+}
+
 void SolverLoop(char* WBpath)
 {
     Game *game = initGame(WBpath);
@@ -73,6 +108,7 @@ void SolverLoop(char* WBpath)
     {
         return;
     }
+    struct SendInfo *info = calloc(1, sizeof(struct SendInfo));
     while(game->nb_Guesses < maxGuesses)
     {
         char *word = chooseRandomWord(solver);
@@ -82,6 +118,8 @@ void SolverLoop(char* WBpath)
             game->guessedWords[game->nb_Guesses][i] = solver->previousWords[game->nb_Guesses][i];
         }
         colorWord(game);
+        UpdateInfo(game, info);
+        updateTree(solver, info);
         game->nb_Guesses++;
         if (game->found)
             break;
@@ -94,6 +132,7 @@ void SolverLoop(char* WBpath)
     {
         printf("Could not find the word %s in %d guesses\n",game->Hword, game->nb_Guesses);
     }
+    free(info);
     freeSolver(solver);
     freeGame(game);
 }
