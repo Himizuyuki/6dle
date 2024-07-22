@@ -10,7 +10,7 @@ struct Solver *initSolver(Tree *tree, char nbWords)
     if (!solver->wordBank)
     {
         free(solver);
-        sprintf(stderr, "Error: could not load word bank from game");
+        printf("Error: could not load word bank\n");
         return NULL;
     }
     solver->nbPreviousWords = 0;
@@ -65,16 +65,35 @@ char *chooseRandomWord(struct Solver *solver)
     return solver->previousWords[solver->nbPreviousWords++];
 }
 
-void SolverLoop(Game *game)
+void SolverLoop(char* WBpath)
 {
+    Game *game = initGame(WBpath);
     struct Solver *solver = initSolver(game->WB, maxGuesses);
     if (!solver)
     {
         return;
     }
-    // Pure Random Approach lol
-    for (size_t i = 0; i < maxGuesses; i++)
+    while(game->nb_Guesses < maxGuesses)
     {
         char *word = chooseRandomWord(solver);
+        printf("Guessing word %s\n", word);
+        for (size_t i = 0; i < solver->wordLength; i++)
+        {
+            game->guessedWords[game->nb_Guesses][i] = solver->previousWords[game->nb_Guesses][i];
+        }
+        colorWord(game);
+        game->nb_Guesses++;
+        if (game->found)
+            break;
     }
+    if (game->found)
+    {
+        printf("Found the word %s in %d guesses\n",game->Hword, game->nb_Guesses);
+    }
+    else
+    {
+        printf("Could not find the word %s in %d guesses\n",game->Hword, game->nb_Guesses);
+    }
+    freeSolver(solver);
+    freeGame(game);
 }

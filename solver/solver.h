@@ -19,5 +19,6 @@ struct Solver
 
 struct Solver *initSolver(Tree *tree, char nbWords);
 void freeSolver(struct Solver *solver);
+void SolverLoop(char* WBpath);
 
 #endif // DEBUG
