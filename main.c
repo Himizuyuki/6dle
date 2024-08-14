@@ -3,5 +3,5 @@
 
 int main(int argc, char **argv)
 {
-    argc == 0 ? GameLoop("obj/wordBank.txt") : SolverLoop("obj/wordBank.txt");
+    argc == 1 ? GameLoop("obj/wordBank.txt") : SolverLoop("obj/wordBank.txt");
 }
