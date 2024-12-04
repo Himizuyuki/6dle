@@ -39,6 +39,7 @@ the terminal
 *       -> free the GTree
 *       -> free Game struct
 */
+
 void yellow()
 {
     printf("\033[1;33m");
@@ -337,7 +338,7 @@ void GetInput(Game *game)
                 continue;
             }
         }
-        else if ((input == ']' || input == '*') && len > 0)
+        else if ((input == 127) && len > 0)
         {
             game->guessedWords[game->nb_Guesses][--len] = 0;
         }
