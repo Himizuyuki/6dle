@@ -6,11 +6,13 @@ LDLIBS = -lm
 BUILD = build
 WORDS = data/wordBank.txt
 FREQ = data/wordFreq.txt
+NEVER_SECRET = data/neverSecret.txt
 MODEL = models/solver.nn
 
 # Front ends find their data from any working directory.
 PATHS = -DSIXDLE_WORDS='"$(CURDIR)/$(WORDS)"' \
         -DSIXDLE_FREQ='"$(CURDIR)/$(FREQ)"' \
+        -DSIXDLE_NEVER_SECRET='"$(CURDIR)/$(NEVER_SECRET)"' \
         -DSIXDLE_MODEL='"$(CURDIR)/$(MODEL)"' \
         -DSIXDLE_ROOT='"$(CURDIR)"'
 

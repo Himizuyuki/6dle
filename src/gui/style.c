@@ -43,6 +43,11 @@ static const char CSS[] =
     "progressbar progress { min-height: 10px; border-radius: 5px;\n"
     "  background-color: #538d4e; border: none; }\n"
     "progressbar.best progress { background-color: #6aaa64; }\n"
+    ".mode-switch button { padding: 4px 16px; }\n"
+    ".mode-switch button:checked { background-image: none;\n"
+    "  background-color: #538d4e; color: #ffffff; }\n"
+    "progressbar.dist progress { background-color: #6e6e70; }\n"
+    "progressbar.dist.best progress { background-color: #538d4e; }\n"
     ".probe-tag { font-size: 10px; font-weight: bold; color: #ffffff;\n"
     "  background-color: #3d6fb6; border-radius: 4px; padding: 0 5px; }\n";
 

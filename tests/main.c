@@ -54,6 +54,8 @@ int main(int argc, char **argv)
         { "pattern", pattern_tests },
         { "game", game_tests },
         { "prior", prior_tests },
+        { "daily", daily_tests },
+        { "stats", stats_tests },
         { "knowledge", knowledge_tests },
         { "expert", expert_tests },
         { "nn", nn_tests },

@@ -75,6 +75,7 @@ static int builder_finish(Builder *b, WordList *list)
     list->items = b->items;
     list->count = unique;
     list->zipf = NULL;
+    list->never_secret = NULL;
     return 0;
 }
 
@@ -83,6 +84,7 @@ int wordlist_load(WordList *list, const char *path)
     list->items = NULL;
     list->count = 0;
     list->zipf = NULL;
+    list->never_secret = NULL;
     FILE *f = fopen(path, "r");
     if (f == NULL)
         return -1;
@@ -108,6 +110,7 @@ int wordlist_from_array(WordList *list, const char *const *words, size_t n)
     list->items = NULL;
     list->count = 0;
     list->zipf = NULL;
+    list->never_secret = NULL;
     Builder b = { 0 };
     for (size_t i = 0; i < n; i++)
     {
@@ -124,8 +127,10 @@ void wordlist_free(WordList *list)
 {
     free(list->items);
     free(list->zipf);
+    free(list->never_secret);
     list->items = NULL;
     list->zipf = NULL;
+    list->never_secret = NULL;
     list->count = 0;
 }
 
@@ -177,4 +182,37 @@ int word_is_valid(const char *s)
             return 0;
     }
     return s[WORD_LEN] == '\0';
+}
+
+int wordlist_load_never_secret(WordList *list, const char *path)
+{
+    FILE *f = fopen(path, "r");
+    if (f == NULL)
+        return -1;
+    unsigned char *flags = calloc(list->count ? list->count : 1, 1);
+    if (flags == NULL)
+    {
+        fclose(f);
+        return -1;
+    }
+    char *line = NULL;
+    size_t cap = 0;
+    while (getline(&line, &cap, f) != -1)
+    {
+        if (line[0] == '#')
+            continue;
+        long index = wordlist_find(list, line);
+        if (index >= 0)
+            flags[index] = 1;
+    }
+    free(line);
+    fclose(f);
+    free(list->never_secret);
+    list->never_secret = flags;
+    return 0;
+}
+
+int word_can_be_secret(const WordList *list, size_t index)
+{
+    return list->never_secret == NULL || !list->never_secret[index];
 }

@@ -82,7 +82,7 @@ static void on_activate(GtkApplication *gtk_app, App *app)
 
     app->window = gtk_application_window_new(gtk_app);
     gtk_window_set_title(GTK_WINDOW(app->window), "6dle");
-    gtk_window_set_default_size(GTK_WINDOW(app->window), 900, 780);
+    gtk_window_set_default_size(GTK_WINDOW(app->window), 900, 840);
     style_add(app->window, "sixdle");
 
     app->stack = gtk_stack_new();
@@ -101,6 +101,7 @@ static void on_activate(GtkApplication *gtk_app, App *app)
     gtk_header_bar_set_custom_title(GTK_HEADER_BAR(header), switcher);
 
     gtk_header_bar_pack_start(GTK_HEADER_BAR(header), difficulty_menu(app));
+    gtk_header_bar_pack_end(GTK_HEADER_BAR(header), stats_button_new(app));
     gtk_window_set_titlebar(GTK_WINDOW(app->window), header);
 
     gtk_container_add(GTK_CONTAINER(app->window), app->stack);
@@ -112,10 +113,14 @@ static void on_activate(GtkApplication *gtk_app, App *app)
 static void usage(const char *prog)
 {
     fprintf(stderr,
-            "usage: %s [--words FILE] [--freq FILE] [--model FILE]\n"
-            "  --words FILE  word list (default %s)\n"
-            "  --freq FILE   word frequencies (default %s)\n"
-            "  --model FILE  solver network (default %s)\n",
+            "usage: %s [--words FILE] [--freq FILE] [--model FILE] "
+            "[--stats-file FILE]\n"
+            "  --words FILE       word list (default %s)\n"
+            "  --freq FILE        word frequencies (default %s)\n"
+            "  --model FILE       solver network (default %s)\n"
+            "  --stats-file FILE  where your statistics are kept (default:\n"
+            "                     $SIXDLE_STATS, $XDG_DATA_HOME/6dle/stats.txt"
+            "\n                     or ~/.local/share/6dle/stats.txt)\n",
             prog, SIXDLE_WORDS, SIXDLE_FREQ, SIXDLE_MODEL);
 }
 
@@ -123,6 +128,7 @@ int main(int argc, char **argv)
 {
     const char *words_path = SIXDLE_WORDS;
     const char *freq_path = SIXDLE_FREQ;
+    const char *stats_path = NULL;
     App app;
     memset(&app, 0, sizeof(app));
     app.model_path = SIXDLE_MODEL;
@@ -134,6 +140,8 @@ int main(int argc, char **argv)
             freq_path = argv[++i];
         else if (strcmp(argv[i], "--model") == 0 && i + 1 < argc)
             app.model_path = argv[++i];
+        else if (strcmp(argv[i], "--stats-file") == 0 && i + 1 < argc)
+            stats_path = argv[++i];
         else
         {
             usage(argv[0]);
@@ -151,6 +159,9 @@ int main(int argc, char **argv)
     app.has_freq = wordlist_load_frequencies(&app.words, freq_path) == 0;
     if (!app.has_freq)
         fprintf(stderr, "6dle: no word frequencies at %s\n", freq_path);
+    if (wordlist_load_never_secret(&app.words, SIXDLE_NEVER_SECRET) != 0)
+        fprintf(stderr, "6dle: no list of words to keep secret-free at %s\n",
+                SIXDLE_NEVER_SECRET);
     for (int p = 0; p < PRIOR_KINDS; p++)
     {
         if ((p == PRIOR_UNIFORM || app.has_freq)
@@ -163,6 +174,21 @@ int main(int argc, char **argv)
         fprintf(stderr, "6dle: no solver model at %s (run `make train`)\n",
                 app.model_path);
     rng_seed_random(&app.rng);
+
+    if (stats_path != NULL)
+        g_strlcpy(app.stats_path, stats_path, sizeof(app.stats_path));
+    else if (stats_default_path(app.stats_path, sizeof(app.stats_path)) != 0)
+        app.stats_path[0] = '\0';
+    if (app.stats_path[0] != '\0'
+        && stats_load(&app.stats, app.stats_path) != 0)
+    {
+        // Unreadable: play without overwriting it.
+        fprintf(stderr, "6dle: cannot read statistics %s\n", app.stats_path);
+        stats_init(&app.stats);
+        app.stats_path[0] = '\0';
+    }
+    else if (app.stats_path[0] == '\0')
+        stats_init(&app.stats);
     // The board is designed on a dark background; use GTK's built-in dark
     // theme for the rest unless the user picked a theme explicitly.
     if (g_getenv("GTK_THEME") == NULL)

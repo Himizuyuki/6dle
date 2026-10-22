@@ -142,10 +142,61 @@ static void difficulty_levels(void)
     wordlist_free(&list);
 }
 
+static void never_secret_words_are_never_drawn(void)
+{
+    WordList list;
+    REQUIRE(wordlist_load(&list, SIXDLE_WORDS) == 0);
+    REQUIRE(wordlist_load_frequencies(&list, SIXDLE_FREQ) == 0);
+    REQUIRE(wordlist_load_never_secret(&list, SIXDLE_NEVER_SECRET) == 0);
+    long slur = wordlist_find(&list, "faggot");
+    long fine = wordlist_find(&list, "scrape"); // contains "rape": allowed
+    REQUIRE(slur >= 0 && fine >= 0);
+    CHECK(!word_can_be_secret(&list, (size_t)slur));
+    CHECK(word_can_be_secret(&list, (size_t)fine));
+    size_t blocked = 0;
+    for (size_t i = 0; i < list.count; i++)
+        blocked += !word_can_be_secret(&list, i);
+    CHECK(blocked >= 30 && blocked < 100);
+
+    for (int kind = 0; kind < PRIOR_KINDS; kind++)
+    {
+        Prior prior;
+        REQUIRE(prior_init(&prior, &list, (PriorKind)kind) == 0);
+        int zero = 1;
+        for (size_t i = 0; i < list.count; i++)
+        {
+            if (!word_can_be_secret(&list, i))
+                zero &= prior.weight[i] == 0.0f;
+        }
+        CHECK(zero);
+        // Draw a lot of secrets: none may be blocked.
+        Rng rng;
+        rng_seed(&rng, 9);
+        int drawn_blocked = 0;
+        for (int g = 0; g < 50000; g++)
+        {
+            Game game;
+            game_start_random(&game, &list,
+                              kind == PRIOR_UNIFORM && g % 2 ? NULL : &prior,
+                              &rng);
+            drawn_blocked += !word_can_be_secret(
+                &list, (size_t)wordlist_find(&list, game.secret));
+        }
+        CHECK_INT(drawn_blocked, 0);
+        prior_free(&prior);
+    }
+    // Still a perfectly valid guess.
+    Game game;
+    game_start(&game, &list, "planet");
+    CHECK_INT(game_guess(&game, "faggot"), GUESS_OK);
+    wordlist_free(&list);
+}
+
 void prior_tests(void)
 {
     RUN(uniform_prior);
     RUN(common_words_weigh_more);
     RUN(sampling_follows_the_weights);
     RUN(difficulty_levels);
+    RUN(never_secret_words_are_never_drawn);
 }

@@ -4,6 +4,8 @@
  *   6dle-term --solve [WORD]  watch the neural network solve WORD (or a
  *                             random word), printing the most likely
  *                             secrets and its top guesses
+ *   6dle-term --daily         play today's word, the same for everyone
+ *   6dle-term --stats         show your statistics
  * --difficulty easy|normal|hard|any chooses how the secret is picked,
  * --hard keeps the solver to words that can still be the secret.
  */
@@ -16,7 +18,9 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "core/daily.h"
 #include "core/game.h"
+#include "core/stats.h"
 #include "solver/nn.h"
 #include "solver/solver.h"
 
@@ -123,8 +127,58 @@ static void draw(const Game *game, const char *typed, int flagged,
     fflush(stdout);
 }
 
+// Statistics of the player, saved after every game (path empty: not saved).
+typedef struct Session
+{
+    Stats stats;
+    char path[4096];
+    long day; // puzzle number when playing the daily word, 0 in free play
+} Session;
+
+static void save(Session *s)
+{
+    if (s->path[0] != '\0' && stats_save(&s->stats, s->path) != 0)
+        fprintf(stderr, "6dle-term: cannot save statistics to %s\n", s->path);
+}
+
+static void print_block(const char *title, const StatsBlock *b, unsigned streak)
+{
+    printf("%s: played %u, won %u%%, current streak %u, max streak %u\n", title,
+           b->played, stats_win_percent(b), streak, b->best_streak);
+    unsigned max = 1;
+    for (int i = 0; i < MAX_GUESSES; i++)
+        max = b->dist[i] > max ? b->dist[i] : max;
+    for (int i = 0; i < MAX_GUESSES; i++)
+    {
+        // The row of the last game won is green.
+        printf("  %d %s", i + 1, b->last_result == i + 1 ? GREEN : DARK);
+        int width = (int)(30 * b->dist[i] / max);
+        for (int j = 0; j < width; j++)
+            printf("█");
+        if (width == 0)
+            printf("▏");
+        printf(RESET " %u\n", b->dist[i]);
+    }
+    printf("  lost: %u\n", b->played - b->won);
+}
+
+static void print_stats(const Stats *stats, int daily, int free_play)
+{
+    if (daily)
+        print_block("Daily", &stats->daily,
+                    stats_daily_streak(stats, daily_today()));
+    if (free_play)
+        print_block("Free play", &stats->free_play, stats->free_play.streak);
+}
+
+static void print_next_word(void)
+{
+    long left = daily_seconds_left();
+    printf("Next word in %ld h %02ld min.\n", left / 3600, left % 3600 / 60);
+}
+
 // Returns 0 if the player wants to stop (or input ended).
-static int play_round(Game *game)
+static int play_round(Game *game, Session *s)
 {
     char typed[WORD_LEN + 1] = { 0 };
     int len = 0;
@@ -147,6 +201,20 @@ static int play_round(Game *game)
             {
                 memset(typed, 0, sizeof(typed));
                 len = 0;
+                if (s->day != 0)
+                {
+                    // Saved after every guess: quitting doesn't give a
+                    // second try.
+                    stats_set_progress(&s->stats, game, s->day);
+                    if (game->status != GAME_PLAYING)
+                        stats_record_daily(&s->stats, game, s->day);
+                    save(s);
+                }
+                else if (game->status != GAME_PLAYING)
+                {
+                    stats_record_free(&s->stats, game);
+                    save(s);
+                }
             }
             else
             {
@@ -170,6 +238,15 @@ static int play_round(Game *game)
         printf("║        %s         ║\n", game->secret);
         printf("╚═══════════════════════╝\n");
     }
+    print_stats(&s->stats, s->day != 0, s->day == 0);
+    if (s->day != 0)
+    {
+        char share[512];
+        daily_share(game, s->day, share, sizeof(share));
+        printf("\nShare your result:\n%s\n", share);
+        print_next_word();
+        return 0;
+    }
     printf("╔═══════════════════════╗\n");
     printf("║Want to play some more?║\n");
     printf("║     (Y)es | (n)o      ║\n");
@@ -185,15 +262,40 @@ static int play_round(Game *game)
     }
 }
 
-static int play(const WordList *words, const Prior *prior)
+static int play(const WordList *words, const Prior *prior, Session *s)
 {
     Rng rng;
     rng_seed_random(&rng);
     Game game;
+    s->day = 0;
     do
         game_start_random(&game, words, prior, &rng);
-    while (play_round(&game));
+    while (play_round(&game, s));
     printf("Thanks for playing!\n");
+    return EXIT_SUCCESS;
+}
+
+static int play_daily(const WordList *words, Session *s)
+{
+    long today = daily_today();
+    long word = daily_word(words, today);
+    if (word < 0)
+    {
+        fprintf(stderr,
+                "6dle-term: the daily word needs the word "
+                "frequencies (--freq)\n");
+        return EXIT_FAILURE;
+    }
+    Game game;
+    game_start(&game, words, words->items[word]);
+    // Pick up where today's game was left.
+    if (s->stats.progress_day == today)
+    {
+        for (int i = 0; i < s->stats.nprogress; i++)
+            game_guess(&game, s->stats.progress[i]);
+    }
+    s->day = today;
+    play_round(&game, s);
     return EXIT_SUCCESS;
 }
 
@@ -295,16 +397,22 @@ static int solve(const WordList *words, const Prior *prior,
 static void usage(const char *prog)
 {
     fprintf(stderr,
-            "usage: %s [options] [--solve [WORD]]\n"
-            "  --words FILE   word list (default %s)\n"
-            "  --freq FILE    word frequencies (default %s)\n"
-            "  --model FILE   solver network (default %s)\n"
-            "  --difficulty L how the secret is picked: easy, normal "
+            "usage: %s [options] [--daily | --stats | --solve [WORD]]\n"
+            "  --daily             play today's word (the same for everyone)\n"
+            "  --stats             show your statistics\n"
+            "  --solve [WORD]      let the solver find WORD (default: "
+            "random)\n"
+            "  --difficulty L      how the secret is picked: easy, normal "
             "(default),\n"
-            "                 hard or any (all words equally likely)\n"
-            "  --hard         solver: only guess words that can be the "
+            "                      hard or any (all words equally likely)\n"
+            "  --hard              solver: only guess words that can be the "
             "secret\n"
-            "  --solve [WORD] let the solver find WORD (default: random)\n",
+            "  --words FILE        word list (default %s)\n"
+            "  --freq FILE         word frequencies (default %s)\n"
+            "  --model FILE        solver network (default %s)\n"
+            "  --stats-file FILE   your statistics (default: $SIXDLE_STATS,\n"
+            "                      $XDG_DATA_HOME/6dle/stats.txt or\n"
+            "                      ~/.local/share/6dle/stats.txt)\n",
             prog, SIXDLE_WORDS, SIXDLE_FREQ, SIXDLE_MODEL);
 }
 
@@ -313,7 +421,14 @@ int main(int argc, char **argv)
     const char *words_path = SIXDLE_WORDS;
     const char *freq_path = SIXDLE_FREQ;
     const char *model_path = SIXDLE_MODEL;
-    int solving = 0;
+    const char *stats_path = NULL;
+    enum
+    {
+        PLAY,
+        DAILY,
+        STATS,
+        SOLVE
+    } mode = PLAY;
     int probes = 1;
     PriorKind kind = PRIOR_NORMAL;
     const char *secret = NULL;
@@ -325,6 +440,8 @@ int main(int argc, char **argv)
             freq_path = argv[++i];
         else if (strcmp(argv[i], "--model") == 0 && i + 1 < argc)
             model_path = argv[++i];
+        else if (strcmp(argv[i], "--stats-file") == 0 && i + 1 < argc)
+            stats_path = argv[++i];
         else if (strcmp(argv[i], "--difficulty") == 0 && i + 1 < argc)
         {
             const char *level = argv[++i];
@@ -347,9 +464,13 @@ int main(int argc, char **argv)
         }
         else if (strcmp(argv[i], "--hard") == 0)
             probes = 0;
+        else if (strcmp(argv[i], "--daily") == 0)
+            mode = DAILY;
+        else if (strcmp(argv[i], "--stats") == 0)
+            mode = STATS;
         else if (strcmp(argv[i], "--solve") == 0)
         {
-            solving = 1;
+            mode = SOLVE;
             if (i + 1 < argc && argv[i + 1][0] != '-')
                 secret = argv[++i];
         }
@@ -360,6 +481,25 @@ int main(int argc, char **argv)
         }
     }
 
+    Session session = { .day = 0 };
+    if (stats_path != NULL)
+        snprintf(session.path, sizeof(session.path), "%s", stats_path);
+    else if (stats_default_path(session.path, sizeof(session.path)) != 0)
+        session.path[0] = '\0';
+    if (session.path[0] != '\0'
+        && stats_load(&session.stats, session.path) != 0)
+    {
+        fprintf(stderr, "6dle-term: cannot read statistics %s\n", session.path);
+        return EXIT_FAILURE;
+    }
+    if (session.path[0] == '\0')
+        stats_init(&session.stats);
+    if (mode == STATS)
+    {
+        print_stats(&session.stats, 1, 1);
+        return EXIT_SUCCESS;
+    }
+
     WordList words;
     errno = 0;
     if (wordlist_load(&words, words_path) != 0)
@@ -368,8 +508,8 @@ int main(int argc, char **argv)
                 errno ? strerror(errno) : "no six letter words");
         return EXIT_FAILURE;
     }
-    if (kind != PRIOR_UNIFORM
-        && wordlist_load_frequencies(&words, freq_path) != 0)
+    if (wordlist_load_frequencies(&words, freq_path) != 0
+        && kind != PRIOR_UNIFORM)
     {
         fprintf(stderr,
                 "6dle-term: no word frequencies at %s, any word can "
@@ -377,11 +517,18 @@ int main(int argc, char **argv)
                 freq_path);
         kind = PRIOR_UNIFORM;
     }
+    // Slurs and vulgar words are valid guesses but never the secret.
+    wordlist_load_never_secret(&words, SIXDLE_NEVER_SECRET);
     Prior prior;
     if (prior_init(&prior, &words, kind) != 0)
         return EXIT_FAILURE;
-    int status = solving ? solve(&words, &prior, model_path, secret, probes)
-                         : play(&words, &prior);
+    int status;
+    if (mode == SOLVE)
+        status = solve(&words, &prior, model_path, secret, probes);
+    else if (mode == DAILY)
+        status = play_daily(&words, &session);
+    else
+        status = play(&words, &prior, &session);
     prior_free(&prior);
     wordlist_free(&words);
     return status;

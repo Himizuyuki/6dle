@@ -58,9 +58,9 @@ typedef struct Solver
     int evaluated; // pool and probs are up to date with k
 } Solver;
 
-// prior: weight of each word as a secret, all > 0 (NULL: uniform), used for
-// the odds of solver_top_answers; it must outlive s. Returns -1 on
-// allocation failure or if the model does not have FEATURE_DIM inputs and
+// prior: weight of each word as a secret (NULL: uniform), used for the odds
+// of solver_top_answers; it must outlive s. Returns -1 on allocation
+// failure or if the model does not have FEATURE_DIM inputs and
 // WORD_FEATURE_DIM outputs. Probes are allowed by default.
 int solver_init(Solver *s, const WordList *words, const Mlp *model,
                 const float *prior);

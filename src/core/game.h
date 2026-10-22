@@ -52,7 +52,7 @@ typedef struct Game
 void game_start(Game *game, const WordList *words, const char *secret);
 
 // Start a game with a secret drawn from the word list according to prior
-// (NULL: uniformly).
+// (NULL: uniformly). Words flagged never_secret are never drawn.
 void game_start_random(Game *game, const WordList *words, const Prior *prior,
                        Rng *rng);
 

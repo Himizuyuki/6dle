@@ -47,7 +47,15 @@ static void buckets_drain(Buckets *b, int weighted, GuessStats *out)
     for (size_t i = 0; i < b->nseen; i++)
     {
         Pattern p = b->seen[i];
-        double m = b->mass[p] / total;
+        double m = total > 0.0 ? b->mass[p] / total : 0.0;
+        if (m <= 0.0)
+        {
+            // Only zero-weight answers (never secrets): no contribution.
+            b->count[p] = 0;
+            b->mass[p] = 0.0;
+            b->wlogw[p] = 0.0;
+            continue;
+        }
         out->entropy -= m * log2(m);
         out->expected_left += m * b->count[p];
         if (b->count[p] > out->worst_left)

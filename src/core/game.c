@@ -17,6 +17,11 @@ void game_start_random(Game *game, const WordList *words, const Prior *prior,
 {
     size_t index =
         prior != NULL ? prior_sample(prior, rng) : rng_below(rng, words->count);
+    // Uniform draw: skip the words that must never be the secret.
+    for (size_t tries = 0; prior == NULL && !word_can_be_secret(words, index)
+         && tries < words->count;
+         tries++)
+        index = rng_below(rng, words->count);
     game_start(game, words, words->items[index]);
 }
 

@@ -47,12 +47,14 @@ typedef struct Prior
 {
     PriorKind kind;
     size_t count;
-    float *weight; // probability of each word, sums to 1, all > 0
+    float *weight; // probability of each word, sums to 1; 0 only for the
+                   // words that can never be the secret (never_secret)
     double *cumulative; // running sum of weight, for sampling
 } Prior;
 
-// Returns -1 on allocation failure, or if kind needs frequencies and
-// words->zipf is NULL.
+// Returns -1 on allocation failure, if kind needs frequencies and
+// words->zipf is NULL, or if no word can be the secret. Words flagged in
+// words->never_secret get weight 0 at every level.
 int prior_init(Prior *prior, const WordList *words, PriorKind kind);
 void prior_free(Prior *prior);
 

@@ -13,6 +13,7 @@ typedef struct WordList
     char (*items)[WORD_LEN + 1];
     size_t count;
     float *zipf; // word frequencies (see wordlist_load_frequencies), or NULL
+    unsigned char *never_secret; // 1: valid guess, never the secret (or NULL)
 } WordList;
 
 // Load a word list, one word per line. Lines are trimmed and lowercased;
@@ -30,6 +31,14 @@ void wordlist_free(WordList *list);
 // comment), into list->zipf. Zipf is log10 of occurrences per billion words;
 // unlisted words get 0. Returns 0 on success, -1 if the file can't be read.
 int wordlist_load_frequencies(WordList *list, const char *path);
+
+// Read the words that must never be picked as the secret (slurs, vulgar
+// words), one per line, '#' starts a comment, into list->never_secret.
+// Returns 0 on success, -1 if the file can't be read.
+int wordlist_load_never_secret(WordList *list, const char *path);
+
+// 1 if the word (index) may be picked as the secret.
+int word_can_be_secret(const WordList *list, size_t index);
 
 // Index of word in the list, or -1. Accepts upper or lower case.
 long wordlist_find(const WordList *list, const char *word);

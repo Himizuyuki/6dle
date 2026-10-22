@@ -190,11 +190,16 @@ size_t solver_top_answers(const Solver *s, Suggestion *out, size_t n)
     double mass = 0.0;
     for (size_t i = 0; i < s->k.ncands; i++)
         mass += s->answer_prior ? s->answer_prior[s->k.cands[i]] : 1.0;
+    // Only zero-weight words left (e.g. a never-secret word typed as the
+    // secret in the GUI): fall back to equal odds.
+    const float *prior = mass > 0.0 ? s->answer_prior : NULL;
+    if (prior == NULL)
+        mass = (double)s->k.ncands;
     size_t filled = 0;
     for (size_t i = 0; i < s->k.ncands; i++)
     {
         uint32_t w = s->k.cands[i];
-        double weight = s->answer_prior ? s->answer_prior[w] : 1.0;
+        double weight = prior ? prior[w] : 1.0;
         insert_top(out, n, &filled, (Suggestion){ w, (float)(weight / mass) });
     }
     return filled;

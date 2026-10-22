@@ -1,14 +1,17 @@
 # 6dle
 
 Wordle with six letter words, written entirely in C, with a GTK interface, a
-difficulty setting and a **neural network solver** you can watch play, one
-guess at a time.
+daily word, statistics, a difficulty setting and a **neural network solver**
+you can watch play, one guess at a time.
 
-| Play | Solver |
+| Play (daily word + statistics) | Solver |
 | --- | --- |
-| ![Playing a game](docs/play.png) | ![The solver two guesses into EITHER](docs/solver.png) |
+| ![The daily word, solved, with the statistics](docs/daily.png) | ![The solver two guesses into EITHER](docs/solver.png) |
 
-- **Play** in a GTK window (or in the terminal, the original interface).
+- **Play** in a GTK window (or in the terminal, the original interface):
+  the **daily word**, the same for everyone each day, or **free play**.
+- **Statistics**: games played, win %, current and best streak, and the
+  distribution of your guesses, for the daily word and free play.
 - **Difficulty**: *Easy*, *Normal*, *Hard* or *Any word*. It controls how
   the secret word is picked, based on how familiar it is and how many
   look-alikes it has.
@@ -22,31 +25,131 @@ guess at a time.
 - Everything is C11: the game, the GUI, the neural network (forward pass,
   backpropagation, Adam), the training and analysis tools, and the tests.
   The only library is GTK 3.
-- `make test` runs 49 unit tests under AddressSanitizer + UBSan, plus an
+- `make test` runs 58 unit tests under AddressSanitizer + UBSan, plus an
   end-to-end train-and-solve run.
 
 ---
 
 ## Contents
 
-1. [What's new in version 2](#whats-new-in-version-2)
-2. [Quick start](#quick-start)
-3. [Rules](#rules)
-4. [Using the GUI](#using-the-gui)
-5. [Terminal version](#terminal-version)
-6. [Make targets](#make-targets)
-7. [Project layout](#project-layout)
-8. [How the code fits together](#how-the-code-fits-together)
-9. [The neural network solver](#the-neural-network-solver)
-10. [Training](#training)
-11. [Results](#results)
-12. [Best starting words](#best-starting-words)
-13. [Tests](#tests)
-14. [Should the GUI move to GTK 4?](#should-the-gui-move-to-gtk-4)
-15. [History](#history)
-16. [Troubleshooting](#troubleshooting)
-17. [Ideas for later](#ideas-for-later)
-18. [Credits](#credits)
+1. [What's new in version 3](#whats-new-in-version-3)
+2. [What's new in version 2](#whats-new-in-version-2)
+3. [Quick start](#quick-start)
+4. [Rules](#rules)
+5. [Using the GUI](#using-the-gui)
+6. [Terminal version](#terminal-version)
+7. [Make targets](#make-targets)
+8. [Project layout](#project-layout)
+9. [How the code fits together](#how-the-code-fits-together)
+10. [The neural network solver](#the-neural-network-solver)
+11. [Training](#training)
+12. [Results](#results)
+13. [Best starting words](#best-starting-words)
+14. [Tests](#tests)
+15. [Should the GUI move to GTK 4?](#should-the-gui-move-to-gtk-4)
+16. [History](#history)
+17. [Troubleshooting](#troubleshooting)
+18. [Ideas for later](#ideas-for-later)
+19. [Credits](#credits)
+
+---
+
+## What's new in version 3
+
+### 1. The daily word
+
+**What.** Every day there is one puzzle, numbered from **#1 on 1 January
+2026** (22 October 2026 is #295). Everyone playing that day with this word
+list gets the same word, so you can compare results. The day changes at
+your local midnight, like Wordle.
+
+**How the word is chosen.** The candidates are the familiar words (Zipf
+frequency ≥ 3, see [difficulty](#3-difficulty-levels-from-word-frequencies)),
+minus the words that must [never be the secret](#3-words-that-are-never-the-secret):
+3,494 words. They are shuffled **once**, with a fixed seed, by the game's
+own random generator. That gives the same order on every machine, and
+puzzle *n* is word number *n* of that order. So:
+
+- no word comes back until all 3,494 have been used (about 9½ years);
+- there is no list of answers in the repository to peek at, just the rule;
+- if the word list or the frequencies change, every daily word changes.
+  A test pins puzzle #1 to a known word so that this can't happen by
+  accident.
+
+**Saved as you play.** Each guess is saved immediately, so closing the
+app and reopening it brings your board back. There's no second try. Once
+you've finished, the daily shows your result until midnight.
+
+**Sharing.** When you're done, **Copy result** puts this on the clipboard
+(the example is puzzle #1, solved with TORIES, BUNDLE, HURDLE):
+
+```
+6dle #1 3/7
+⬛⬛🟩⬛🟨⬛
+⬛🟩⬛🟩🟩🟩
+🟩🟩🟩🟩🟩🟩
+```
+
+The daily word ignores the difficulty menu, which only applies to free
+play. In the terminal: `./build/6dle-term --daily`.
+
+### 2. Statistics
+
+**What.** Two sets, **Daily** and **Free play**, each with:
+
+- games **played** and **win %**;
+- **current streak** and **max streak**;
+- **guess distribution**: how many games were won in 1, 2, … 7 guesses,
+  with your last game highlighted in green, plus the number lost.
+
+**Streak rules.**
+
+- *Daily*: consecutive **days** won. Winning #12 after winning #11 makes the
+  streak go up, and a loss resets it. Skipping a day also breaks it. For
+  example, after winning #10, #11 and #12, the streak still shows 3 on
+  day 13 (you have until midnight), but 0 from day 14 if you skipped #13.
+- *Free play*: consecutive **wins**.
+
+**Where.** In the GUI, the **Statistics** button (top right). It opens by
+itself when you finish the daily word. In the terminal, they are printed
+after every game, or any time with `./build/6dle-term --stats`.
+
+**Storage.** A small text file, `~/.local/share/6dle/stats.txt` (or
+`$XDG_DATA_HOME/6dle/stats.txt`; `$SIXDLE_STATS` or `--stats-file FILE`
+override it). It is written atomically: a new file, then a rename, so a
+crash can't corrupt it. Delete it to reset your statistics.
+
+```
+# 6dle statistics, written by the game
+daily.played 24
+daily.won 23
+daily.streak 6
+daily.best_streak 9
+daily.last_result 3
+daily.last_day 1
+daily.dist 0 3 9 7 3 1 0
+free.played 41
+...
+progress 1 tories bundle hurdle
+```
+
+`progress` is the daily board being played (or finished) today.
+
+### 3. Words that are never the secret
+
+While building the daily word, I checked what could be picked. The word
+list comes from a Scrabble dictionary, which includes **slurs and vulgar
+words**. Several are common enough (Zipf > 3) that *Easy*, *Normal* and the
+daily word could have picked them.
+
+`data/neverSecret.txt` now lists 41 words in three commented sections:
+slurs, strong profanity and vulgar words, and a few distressing subjects
+(the last section is a judgment call). These words stay **valid guesses**,
+but they are **never picked as the secret**, at any difficulty or as the
+daily word. Words that merely contain the same letters (*scrape*, *sexton*,
+*coarse*) are not affected. The file is plain text, so edit it as you like.
+Tests draw 200,000 secrets across all difficulties and check that none is
+on the list.
 
 ---
 
@@ -311,32 +414,44 @@ repository, run `make clean && make`, or pass `--words`, `--freq` and
   `R` grey.
 - The on-screen keyboard shows the best colour known for each letter. A
   letter that has been green stays green.
-- The **difficulty** decides which words are likely to be the secret (see
-  [above](#3-difficulty-levels-from-word-frequencies)). Every word of the
-  list is always accepted as a guess.
+- The **difficulty** decides which words are likely to be the secret in free
+  play (see [above](#3-difficulty-levels-from-word-frequencies)). Every word
+  of the list is always accepted as a guess.
+- The **daily word** is one puzzle per day, the same for everyone; you get
+  one try per day (see [above](#1-the-daily-word)).
 
 ---
 
 ## Using the GUI
 
 Launch with `make run` or
-`./build/6dle [--words FILE] [--freq FILE] [--model FILE]`.
+`./build/6dle [--words FILE] [--freq FILE] [--model FILE] [--stats-file FILE]`.
 
 The header bar holds the **Difficulty** menu (left; it applies to the next
-new game in either tab) and the **Play / Solver** switcher.
+new free game and solver word), the **Play / Solver** switcher, and the
+**Statistics** button (right).
 
 ### Play tab
+
+At the top, **Daily #N** / **Free play** chooses what you play. The tab opens
+on the daily word until you've finished it for the day. Switching keeps both
+games as they are.
 
 | Action | How |
 | --- | --- |
 | Type a letter | physical keyboard or the on-screen keys |
 | Delete a letter | `Backspace` or `⌫` |
 | Submit the guess | `Enter` or `ENTER` |
-| New game | **New game** button, or `Enter` once a game is over |
+| New game (free play) | **New game** button, or `Enter` once a game is over |
+| Share the daily result | **Copy result**, once the daily is finished |
+| Statistics | **Statistics** button; opens by itself after the daily |
 
 The line above the board shows guesses left and errors: *Not enough letters*,
 *Not in word list*, *Already guessed* (the row is also outlined in red).
-Rejected words never use up a guess.
+Rejected words never use up a guess. After the daily, it also shows how long
+until the next word.
+
+![Free-play statistics](docs/stats.png)
 
 ### Solver tab
 
@@ -369,12 +484,19 @@ The panel shows:
 The original box-drawing interface, on the same game engine.
 
 ```bash
-./build/6dle-term                          # play (letters, Backspace, Enter)
+./build/6dle-term                          # free play (letters, Backspace, Enter)
+./build/6dle-term --daily                  # today's word, the same for everyone
+./build/6dle-term --stats                  # your statistics
 ./build/6dle-term --difficulty hard        # easy, normal (default), hard, any
 ./build/6dle-term --solve                  # watch the solver on a random word
 ./build/6dle-term --solve either           # ... or on a chosen word
 ./build/6dle-term --solve either --hard    # ... in hard mode
 ```
+
+After each game the terminal version prints your statistics with a bar per
+number of guesses (the last game in green) and, for the daily word, the
+result to share and the time until the next word. `--stats-file FILE`
+chooses another statistics file.
 
 `--solve` prints, at every step, the most likely secrets and the network's
 top guesses (`*` marks probes). The exit status is 0 if the word was found.
@@ -435,7 +557,8 @@ Found either in 4 guesses
 ├── .clang-format              code style (make format)
 ├── data/
 │   ├── wordBank.txt           22,182 six letter words (guesses and secrets)
-│   └── wordFreq.txt           Zipf frequency of 11,958 of them (wordfreq)
+│   ├── wordFreq.txt           Zipf frequency of 11,958 of them (wordfreq)
+│   └── neverSecret.txt        valid guesses that are never the secret (slurs...)
 ├── models/
 │   └── solver.nn              trained network (1.1 MB)
 ├── docs/                      screenshots used by this README
@@ -444,6 +567,8 @@ Found either in 4 guesses
 │   │   ├── words.[ch]         load / validate / look up words and frequencies
 │   │   ├── pattern.[ch]       colouring a guess (the Wordle rules)
 │   │   ├── prior.[ch]         difficulty levels: how likely each word is as secret
+│   │   ├── daily.[ch]         the daily word: date → puzzle → word, share text
+│   │   ├── stats.[ch]         player statistics, streaks, saved daily board
 │   │   ├── game.[ch]          game state: guesses, win/loss, keyboard colours
 │   │   └── rng.[ch]           small seedable PRNG (reproducible games/training)
 │   ├── solver/
@@ -454,13 +579,14 @@ Found either in 4 guesses
 │   ├── gui/                   GTK 3 front end
 │   │   ├── main.c             application, header bar, difficulty menu, keys
 │   │   ├── app.h              shared state of the two tabs
-│   │   ├── play.c             Play tab
+│   │   ├── play.c             Play tab (daily / free play, copy result)
+│   │   ├── stats_view.c       Statistics button and popover
 │   │   ├── solve.c            Solver tab (Step, odds, next guesses, probes)
 │   │   ├── board.[ch]         the grid of tiles
 │   │   ├── keyboard.[ch]      on-screen keyboard
 │   │   └── style.[ch]         CSS (colours, tile sizes)
 │   └── term/
-│       └── main.c             terminal front end (+ --solve)
+│       └── main.c             terminal front end (+ --daily, --stats, --solve)
 ├── tools/
 │   ├── train.c                trains / evaluates the network
 │   ├── openers.c              ranks opening words
@@ -743,7 +869,9 @@ The tests use a small home-made framework (`tests/test.h` + `tests/main.c`,
 | words | junk lines (wrong length, digits, apostrophes, CRLF, tabs, two words) are skipped; case folding; sorting; de-duplication; **the file is never modified**; lookups; the real list has 22,182 words; frequency loading |
 | pattern | hand-checked colourings including repeated letters; **200,000 random pairs against a reference implementation**; all 729 encodings round-trip |
 | game | validation (length, dictionary, repeats, game over), win and loss, **keyboard colours never downgraded**, uniform secrets |
-| prior | weights sum to 1 and stay positive; common words outweigh rare ones; **sampling matches the weights** (200,000 draws); Easy/Hard levels contain exactly the words their rules say; look-alike counts (BATTER ≥ 10, PEOPLE 0) |
+| prior | weights sum to 1 and stay positive; common words outweigh rare ones; **sampling matches the weights** (200,000 draws); Easy/Hard levels contain exactly the words their rules say; look-alike counts (BATTER ≥ 10, PEOPLE 0); **never-secret words are never drawn** at any level (200,000 draws) but stay valid guesses |
+| daily | puzzle numbers from dates (epoch, leap years, year change); **puzzle #1 is pinned to a known word**; a full cycle has no repeat and only familiar, allowed words; wrap-around; share text exact (emoji grid, X/7, truncation) |
+| stats | free-play streaks; **daily streaks count days** (same puzzle twice ignored, a missed day breaks it, a loss resets it); win %; save → load round-trip through a new directory; missing file = empty; garbage lines ignored; default location from `$SIXDLE_STATS` / `$XDG_DATA_HOME` / `$HOME` |
 | knowledge | a repeated grey letter keeps the secret; greens kept in place; **remaining words are exactly the brute-force consistent set**; posterior follows Bayes; played words are remembered; feature layout |
 | expert | entropy of known splits; **expected-guess costs on hand-checked cases** (perfect split = 2, with a chance to win = 1 + 6/7); weighted answers; G(n) grows; the shortlist includes probes, never a played word, and only possible words in hard mode |
 | nn | forward pass by hand; **backpropagation against numerical gradients**; learns XOR; save/load; corrupt files rejected |
@@ -796,11 +924,16 @@ you do port, it's contained in one directory.
 
 ## History
 
-### Version 2 (this one)
+### Version 3 (this one)
 
-See [What's new](#whats-new-in-version-2). Also fixed along the way: the
-prior's weights were computed from already-normalised running sums (caught
-by the new prior tests before release).
+See [What's new in version 3](#whats-new-in-version-3): daily word,
+statistics, and words that are never the secret.
+
+### Version 2
+
+See [What's new in version 2](#whats-new-in-version-2). Also fixed along the
+way: the prior's weights were computed from already-normalised running sums
+(caught by the new prior tests before release).
 
 ### Version 1: review of the original code
 
@@ -845,6 +978,17 @@ only *Any word* is available.
 **Different theme**: the app uses GTK's built-in `Adwaita:dark` so the board
 colours look right. Set `GTK_THEME` yourself to override it.
 
+**Reset the statistics**: delete `~/.local/share/6dle/stats.txt` (or the
+file `$SIXDLE_STATS` / `--stats-file` points to). This also forgets today's
+daily board.
+
+**The daily button is greyed out**: the daily word needs
+`data/wordFreq.txt`.
+
+**My friend has a different daily word**: you need the same
+`data/wordBank.txt`, `data/wordFreq.txt` and `data/neverSecret.txt`, and the
+same local date.
+
 ---
 
 ## Ideas for later
@@ -855,8 +999,8 @@ colours look right. Set `GTK_THEME` yourself to override it.
   make an even better teacher.
 - **GTK 4 + libadwaita** port (see above).
 - **Tile flip animations** with CSS transitions.
-- **Daily word**: seed the secret from the date, so everyone gets the same one.
-- **Statistics**: win streak and guess distribution for the player.
+- **Hard-mode rule for players**: an option forcing your guesses to use what
+  the colours revealed.
 
 ---
 

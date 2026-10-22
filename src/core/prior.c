@@ -98,7 +98,14 @@ int prior_init(Prior *prior, const WordList *words, PriorKind kind)
                 : PRIOR_OUTSIDE;
             break;
         }
+        if (!word_can_be_secret(words, i))
+            w = 0.0; // never drawn: cumulative[i] == cumulative[i - 1]
         prior->cumulative[i] = total += w;
+    }
+    if (total <= 0.0)
+    {
+        prior_free(prior);
+        return -1;
     }
     // Weights from the raw running sums first, then normalise the sums.
     for (size_t i = 0; i < words->count; i++)

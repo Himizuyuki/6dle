@@ -59,6 +59,8 @@ void words_tests(void);
 void pattern_tests(void);
 void game_tests(void);
 void prior_tests(void);
+void daily_tests(void);
+void stats_tests(void);
 void knowledge_tests(void);
 void expert_tests(void);
 void nn_tests(void);
