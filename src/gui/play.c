@@ -34,7 +34,9 @@ static void flag_current_row(PlayPage *page, const char *message)
 
 static void new_game(PlayPage *page)
 {
-    game_start_random(&page->game, &page->app->words, &page->app->rng);
+    App *app = page->app;
+    game_start_random(&page->game, &app->words, &app->priors[app->prior],
+                      &app->rng);
     page->typed[0] = '\0';
     page->ntyped = 0;
     set_status(page, "Guess the six letter word");

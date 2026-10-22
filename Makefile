@@ -5,10 +5,12 @@ LDLIBS = -lm
 
 BUILD = build
 WORDS = data/wordBank.txt
+FREQ = data/wordFreq.txt
 MODEL = models/solver.nn
 
 # Front ends find their data from any working directory.
 PATHS = -DSIXDLE_WORDS='"$(CURDIR)/$(WORDS)"' \
+        -DSIXDLE_FREQ='"$(CURDIR)/$(FREQ)"' \
         -DSIXDLE_MODEL='"$(CURDIR)/$(MODEL)"' \
         -DSIXDLE_ROOT='"$(CURDIR)"'
 
@@ -18,7 +20,8 @@ GTK_LIBS = $(shell pkg-config --libs gtk+-3.0)
 LIB_SRC = $(wildcard src/core/*.c src/solver/*.c)
 GUI_SRC = $(wildcard src/gui/*.c)
 TERM_SRC = $(wildcard src/term/*.c)
-TRAIN_SRC = tools/train.c
+TRAIN_SRC = tools/train.c tools/parallel.c
+OPENERS_SRC = tools/openers.c tools/parallel.c
 TEST_SRC = $(wildcard tests/*.c)
 
 obj = $(patsubst %.c,$(BUILD)/obj/%.o,$(1))
@@ -26,6 +29,7 @@ LIB_OBJ = $(call obj,$(LIB_SRC))
 GUI_OBJ = $(call obj,$(GUI_SRC))
 TERM_OBJ = $(call obj,$(TERM_SRC))
 TRAIN_OBJ = $(call obj,$(TRAIN_SRC))
+OPENERS_OBJ = $(call obj,$(OPENERS_SRC))
 # Tests are built separately with AddressSanitizer + UBSan.
 TEST_OBJ = $(patsubst %.c,$(BUILD)/test-obj/%.o,$(LIB_SRC) $(TEST_SRC))
 SANITIZE = -fsanitize=address,undefined -fno-omit-frame-pointer \
@@ -34,14 +38,17 @@ SANITIZE = -fsanitize=address,undefined -fno-omit-frame-pointer \
 GUI = $(BUILD)/6dle
 TERM = $(BUILD)/6dle-term
 TRAINER = $(BUILD)/6dle-train
+OPENERS = $(BUILD)/6dle-openers
 TESTS = $(BUILD)/run-tests
 
-.PHONY: all gui term trainer test check train eval run run-term format clean
+.PHONY: all gui term tools trainer test check train eval openers run \
+        run-term format clean
 
-all: gui term trainer
+all: gui term tools
 
 gui: $(GUI)
 term: $(TERM)
+tools: $(TRAINER) $(OPENERS)
 trainer: $(TRAINER)
 
 $(GUI): $(GUI_OBJ) $(LIB_OBJ)
@@ -51,6 +58,9 @@ $(TERM): $(TERM_OBJ) $(LIB_OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
 $(TRAINER): $(TRAIN_OBJ) $(LIB_OBJ)
+	$(CC) $(CFLAGS) -pthread -o $@ $^ $(LDLIBS)
+
+$(OPENERS): $(OPENERS_OBJ) $(LIB_OBJ)
 	$(CC) $(CFLAGS) -pthread -o $@ $^ $(LDLIBS)
 
 $(BUILD)/obj/src/gui/%.o: src/gui/%.c
@@ -72,11 +82,12 @@ $(BUILD)/obj/%.o: %.c
 test: $(TESTS) $(TRAINER) $(TERM)
 	./$(TESTS)
 	@echo "end-to-end: train on tests/data/small.txt, then solve with it"
-	./$(TRAINER) --words tests/data/small.txt --out $(BUILD)/smoke.nn \
-		--games 300 --epochs 2 --dagger 1 --dagger-games 100 \
-		--dagger-epochs 1 --eval 200 --threads 2 > $(BUILD)/smoke.log
-	./$(TERM) --words tests/data/small.txt --model $(BUILD)/smoke.nn \
-		--solve bottle > /dev/null
+	./$(TRAINER) --words tests/data/small.txt --freq tests/data/small-freq.txt \
+		--out $(BUILD)/smoke.nn --games 300 --epochs 2 --dagger 1 \
+		--dagger-games 100 --dagger-epochs 1 --eval 100 --threads 2 \
+		> $(BUILD)/smoke.log
+	./$(TERM) --words tests/data/small.txt --freq tests/data/small-freq.txt \
+		--model $(BUILD)/smoke.nn --solve bottle > /dev/null
 	@echo "all tests passed"
 
 check: test
@@ -90,14 +101,20 @@ $(BUILD)/test-obj/%.o: %.c
 
 # ---- solver model -------------------------------------------------------
 
-# Retrain the network (a few minutes on all cores). TRAIN_ARGS lets you
+# Retrain the network (about 6 minutes on 12 threads). TRAIN_ARGS lets you
 # tweak it, e.g. make train TRAIN_ARGS="--games 40000 --epochs 12".
 train: $(TRAINER)
-	./$(TRAINER) --words $(WORDS) --out $(MODEL) $(TRAIN_ARGS)
+	./$(TRAINER) --words $(WORDS) --freq $(FREQ) --out $(MODEL) $(TRAIN_ARGS)
 
-# Measure the shipped model (and the entropy expert it imitates).
+# Measure the shipped model (and the expert it imitates) in every mode.
 eval: $(TRAINER)
-	./$(TRAINER) --words $(WORDS) --eval-only $(MODEL) --expert $(TRAIN_ARGS)
+	./$(TRAINER) --words $(WORDS) --freq $(FREQ) --eval-only $(MODEL) \
+		--expert $(TRAIN_ARGS)
+
+# Rank the opening words (a few minutes: every opener against every secret).
+openers: $(OPENERS)
+	./$(OPENERS) --words $(WORDS) --freq $(FREQ) --model $(MODEL) \
+		$(OPENERS_ARGS)
 
 # ---- convenience --------------------------------------------------------
 
@@ -108,8 +125,8 @@ run-term: $(TERM)
 	./$(TERM)
 
 format:
-	clang-format -i $(LIB_SRC) $(GUI_SRC) $(TERM_SRC) $(TRAIN_SRC) \
-		$(TEST_SRC) $(wildcard src/*/*.h tests/*.h)
+	clang-format -i $(LIB_SRC) $(GUI_SRC) $(TERM_SRC) tools/*.c \
+		$(TEST_SRC) $(wildcard src/*/*.h tools/*.h tests/*.h)
 
 clean:
 	rm -rf $(BUILD)

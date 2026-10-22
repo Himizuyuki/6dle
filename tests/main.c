@@ -50,9 +50,13 @@ int main(int argc, char **argv)
         const char *name;
         void (*run)(void);
     } suites[] = {
-        { "words", words_tests },   { "pattern", pattern_tests },
-        { "game", game_tests },     { "knowledge", knowledge_tests },
-        { "expert", expert_tests }, { "nn", nn_tests },
+        { "words", words_tests },
+        { "pattern", pattern_tests },
+        { "game", game_tests },
+        { "prior", prior_tests },
+        { "knowledge", knowledge_tests },
+        { "expert", expert_tests },
+        { "nn", nn_tests },
         { "solver", solver_tests },
     };
     for (size_t i = 0; i < sizeof(suites) / sizeof(suites[0]); i++)

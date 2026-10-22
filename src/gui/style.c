@@ -42,7 +42,9 @@ static const char CSS[] =
     "  background-color: #2c2c2e; border: none; }\n"
     "progressbar progress { min-height: 10px; border-radius: 5px;\n"
     "  background-color: #538d4e; border: none; }\n"
-    "progressbar.best progress { background-color: #6aaa64; }\n";
+    "progressbar.best progress { background-color: #6aaa64; }\n"
+    ".probe-tag { font-size: 10px; font-weight: bold; color: #ffffff;\n"
+    "  background-color: #3d6fb6; border-radius: 4px; padding: 0 5px; }\n";
 
 void style_install(void)
 {

@@ -29,31 +29,45 @@ typedef struct PlayPage
     guint flag_timeout;
 } PlayPage;
 
+// Five ranked words with a probability bar each.
+typedef struct RankList
+{
+    GtkWidget *num[SUGGESTIONS];
+    GtkWidget *word[SUGGESTIONS];
+    GtkWidget *bar[SUGGESTIONS];
+    GtkWidget *pct[SUGGESTIONS];
+    GtkWidget *tag[SUGGESTIONS];
+} RankList;
+
 // "Solver" tab: the network guesses, one step per click.
 typedef struct SolvePage
 {
     App *app;
     GtkWidget *widget;
     Game game;
+    PriorKind prior; // difficulty of the current game
     Solver solver;
     int ready; // a model is loaded and the solver initialised
     size_t left_after[MAX_GUESSES]; // possible words after each guess
     Board board;
     GtkWidget *secret;
+    GtkWidget *secret_kind;
     GtkWidget *entry;
     GtkWidget *step;
+    GtkWidget *probes;
     GtkWidget *remaining;
-    GtkWidget *chance;
+    GtkWidget *remaining_label;
     GtkWidget *status;
-    GtkWidget *rank_num[SUGGESTIONS];
-    GtkWidget *rank_word[SUGGESTIONS];
-    GtkWidget *rank_bar[SUGGESTIONS];
-    GtkWidget *rank_pct[SUGGESTIONS];
+    RankList answers; // most likely secrets (exact posterior)
+    RankList guesses; // network's next guess
 } SolvePage;
 
 struct App
 {
     WordList words;
+    Prior priors[PRIOR_KINDS]; // indexed by PriorKind
+    int has_freq; // word frequencies loaded: difficulty levels available
+    PriorKind prior; // difficulty of new games
     Mlp model;
     int has_model;
     const char *model_path;
@@ -63,6 +77,9 @@ struct App
     PlayPage play;
     SolvePage solve;
 };
+
+// Weights to give the solver for a prior (NULL for uniform).
+const float *app_prior_weights(const App *app, PriorKind kind);
 
 GtkWidget *play_page_init(PlayPage *page, App *app);
 void play_page_key(PlayPage *page, int key);

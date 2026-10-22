@@ -74,6 +74,7 @@ static int builder_finish(Builder *b, WordList *list)
     }
     list->items = b->items;
     list->count = unique;
+    list->zipf = NULL;
     return 0;
 }
 
@@ -81,6 +82,7 @@ int wordlist_load(WordList *list, const char *path)
 {
     list->items = NULL;
     list->count = 0;
+    list->zipf = NULL;
     FILE *f = fopen(path, "r");
     if (f == NULL)
         return -1;
@@ -105,6 +107,7 @@ int wordlist_from_array(WordList *list, const char *const *words, size_t n)
 {
     list->items = NULL;
     list->count = 0;
+    list->zipf = NULL;
     Builder b = { 0 };
     for (size_t i = 0; i < n; i++)
     {
@@ -120,8 +123,40 @@ int wordlist_from_array(WordList *list, const char *const *words, size_t n)
 void wordlist_free(WordList *list)
 {
     free(list->items);
+    free(list->zipf);
     list->items = NULL;
+    list->zipf = NULL;
     list->count = 0;
+}
+
+int wordlist_load_frequencies(WordList *list, const char *path)
+{
+    FILE *f = fopen(path, "r");
+    if (f == NULL)
+        return -1;
+    float *zipf = calloc(list->count, sizeof(*zipf));
+    if (zipf == NULL)
+    {
+        fclose(f);
+        return -1;
+    }
+    char *line = NULL;
+    size_t cap = 0;
+    while (getline(&line, &cap, f) != -1)
+    {
+        char word[32];
+        float value;
+        if (line[0] == '#' || sscanf(line, "%31s %f", word, &value) != 2)
+            continue;
+        long index = wordlist_find(list, word);
+        if (index >= 0 && value > 0.0f)
+            zipf[index] = value;
+    }
+    free(line);
+    fclose(f);
+    free(list->zipf);
+    list->zipf = zipf;
+    return 0;
 }
 
 long wordlist_find(const WordList *list, const char *word)

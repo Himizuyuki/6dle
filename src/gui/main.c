@@ -6,6 +6,53 @@
 #include "app.h"
 #include "style.h"
 
+const float *app_prior_weights(const App *app, PriorKind kind)
+{
+    return kind == PRIOR_UNIFORM ? NULL : app->priors[kind].weight;
+}
+
+static void on_difficulty(GtkComboBox *combo, App *app)
+{
+    const char *id = gtk_combo_box_get_active_id(combo);
+    if (id != NULL)
+        app->prior = (PriorKind)atoi(id);
+}
+
+// Difficulty menu for the header bar.
+static GtkWidget *difficulty_menu(App *app)
+{
+    static const PriorKind LEVELS[] = { PRIOR_EASY, PRIOR_NORMAL, PRIOR_HARD,
+                                        PRIOR_UNIFORM };
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    gtk_container_add(GTK_CONTAINER(box), gtk_label_new("Difficulty"));
+    GtkWidget *combo = gtk_combo_box_text_new();
+    for (size_t i = 0; i < G_N_ELEMENTS(LEVELS); i++)
+    {
+        char id[4];
+        g_snprintf(id, sizeof(id), "%d", (int)LEVELS[i]);
+        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo), id,
+                                  prior_name(LEVELS[i]));
+    }
+    char active[4];
+    g_snprintf(active, sizeof(active), "%d", (int)app->prior);
+    gtk_combo_box_set_active_id(GTK_COMBO_BOX(combo), active);
+    gtk_widget_set_can_focus(combo, FALSE);
+    g_signal_connect(combo, "changed", G_CALLBACK(on_difficulty), app);
+    gtk_container_add(GTK_CONTAINER(box), combo);
+    gtk_widget_set_sensitive(box, app->has_freq);
+    gtk_widget_set_tooltip_text(
+        box,
+        app->has_freq
+            ? "How the secret word is picked (applies to new games):\n"
+              "Easy: familiar words with few look-alikes\n"
+              "Normal: mostly common words\n"
+              "Hard: less familiar words and look-alike traps "
+              "(BATTER, BETTER, BUTTER...)\n"
+              "Any word: all 22,000 words, even obscure ones"
+            : "Word frequencies not found: any word can be the secret.");
+    return box;
+}
+
 static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, App *app)
 {
     (void)widget;
@@ -52,6 +99,8 @@ static void on_activate(GtkApplication *gtk_app, App *app)
     gtk_stack_switcher_set_stack(GTK_STACK_SWITCHER(switcher),
                                  GTK_STACK(app->stack));
     gtk_header_bar_set_custom_title(GTK_HEADER_BAR(header), switcher);
+
+    gtk_header_bar_pack_start(GTK_HEADER_BAR(header), difficulty_menu(app));
     gtk_window_set_titlebar(GTK_WINDOW(app->window), header);
 
     gtk_container_add(GTK_CONTAINER(app->window), app->stack);
@@ -63,15 +112,17 @@ static void on_activate(GtkApplication *gtk_app, App *app)
 static void usage(const char *prog)
 {
     fprintf(stderr,
-            "usage: %s [--words FILE] [--model FILE]\n"
+            "usage: %s [--words FILE] [--freq FILE] [--model FILE]\n"
             "  --words FILE  word list (default %s)\n"
+            "  --freq FILE   word frequencies (default %s)\n"
             "  --model FILE  solver network (default %s)\n",
-            prog, SIXDLE_WORDS, SIXDLE_MODEL);
+            prog, SIXDLE_WORDS, SIXDLE_FREQ, SIXDLE_MODEL);
 }
 
 int main(int argc, char **argv)
 {
     const char *words_path = SIXDLE_WORDS;
+    const char *freq_path = SIXDLE_FREQ;
     App app;
     memset(&app, 0, sizeof(app));
     app.model_path = SIXDLE_MODEL;
@@ -79,6 +130,8 @@ int main(int argc, char **argv)
     {
         if (strcmp(argv[i], "--words") == 0 && i + 1 < argc)
             words_path = argv[++i];
+        else if (strcmp(argv[i], "--freq") == 0 && i + 1 < argc)
+            freq_path = argv[++i];
         else if (strcmp(argv[i], "--model") == 0 && i + 1 < argc)
             app.model_path = argv[++i];
         else
@@ -95,6 +148,16 @@ int main(int argc, char **argv)
                 errno ? strerror(errno) : "no six letter words");
         return EXIT_FAILURE;
     }
+    app.has_freq = wordlist_load_frequencies(&app.words, freq_path) == 0;
+    if (!app.has_freq)
+        fprintf(stderr, "6dle: no word frequencies at %s\n", freq_path);
+    for (int p = 0; p < PRIOR_KINDS; p++)
+    {
+        if ((p == PRIOR_UNIFORM || app.has_freq)
+            && prior_init(&app.priors[p], &app.words, (PriorKind)p) != 0)
+            return EXIT_FAILURE;
+    }
+    app.prior = app.has_freq ? PRIOR_NORMAL : PRIOR_UNIFORM;
     app.has_model = mlp_load(&app.model, app.model_path) == 0;
     if (!app.has_model)
         fprintf(stderr, "6dle: no solver model at %s (run `make train`)\n",
@@ -116,6 +179,11 @@ int main(int argc, char **argv)
     solve_page_free(&app.solve);
     if (app.has_model)
         mlp_free(&app.model);
+    for (int p = 0; p < PRIOR_KINDS; p++)
+    {
+        if (p == PRIOR_UNIFORM || app.has_freq)
+            prior_free(&app.priors[p]);
+    }
     wordlist_free(&app.words);
     return status;
 }

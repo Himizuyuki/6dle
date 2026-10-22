@@ -58,6 +58,7 @@ int test_check(int ok, const char *file, int line, const char *fmt, ...);
 void words_tests(void);
 void pattern_tests(void);
 void game_tests(void);
+void prior_tests(void);
 void knowledge_tests(void);
 void expert_tests(void);
 void nn_tests(void);

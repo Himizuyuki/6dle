@@ -2,6 +2,7 @@
 #define GAME_H
 
 #include "pattern.h"
+#include "prior.h"
 #include "rng.h"
 #include "words.h"
 
@@ -50,8 +51,10 @@ typedef struct Game
 // have to be in the list, which lets tests pick any word).
 void game_start(Game *game, const WordList *words, const char *secret);
 
-// Start a game with a secret drawn uniformly from the word list.
-void game_start_random(Game *game, const WordList *words, Rng *rng);
+// Start a game with a secret drawn from the word list according to prior
+// (NULL: uniformly).
+void game_start_random(Game *game, const WordList *words, const Prior *prior,
+                       Rng *rng);
 
 GuessResult game_guess(Game *game, const char *word);
 

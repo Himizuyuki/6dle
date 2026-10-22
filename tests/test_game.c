@@ -98,7 +98,7 @@ static void random_secrets_cover_the_whole_list(void)
     for (int i = 0; i < draws; i++)
     {
         Game game;
-        game_start_random(&game, &list, &rng);
+        game_start_random(&game, &list, NULL, &rng);
         long index = wordlist_find(&list, game.secret);
         REQUIRE(index >= 0);
         seen[index]++;

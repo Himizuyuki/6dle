@@ -1,0 +1,10 @@
+# Test fixture: frequencies for some words of small.txt
+planet 4.2
+puzzle 4.0
+bottle 4.3
+wallet 3.9
+bullet 4.0
+candle 3.6
+humble 3.7
+jumble 2.8
+notaword 5.0

@@ -12,9 +12,12 @@ void game_start(Game *game, const WordList *words, const char *secret)
     game->status = GAME_PLAYING;
 }
 
-void game_start_random(Game *game, const WordList *words, Rng *rng)
+void game_start_random(Game *game, const WordList *words, const Prior *prior,
+                       Rng *rng)
 {
-    game_start(game, words, words->items[rng_below(rng, words->count)]);
+    size_t index =
+        prior != NULL ? prior_sample(prior, rng) : rng_below(rng, words->count);
+    game_start(game, words, words->items[index]);
 }
 
 static void update_keys(Game *game, const char *guess, Pattern p)

@@ -4,22 +4,36 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "core/game.h"
+static double weight_of(const Knowledge *k, uint32_t word)
+{
+    return k->prior != NULL ? k->prior[word] : 1.0;
+}
 
-int knowledge_init(Knowledge *k, const WordList *words)
+int knowledge_init(Knowledge *k, const WordList *words, const float *prior)
 {
     k->words = words;
+    k->prior = prior;
     k->cands = malloc(words->count * sizeof(*k->cands));
-    if (k->cands == NULL)
+    k->post = malloc(words->count * sizeof(*k->post));
+    if (k->cands == NULL || k->post == NULL)
+    {
+        knowledge_free(k);
         return -1;
+    }
     knowledge_reset(k);
     return 0;
 }
 
 void knowledge_reset(Knowledge *k)
 {
+    k->mass = 0.0;
     for (size_t i = 0; i < k->words->count; i++)
+    {
         k->cands[i] = (uint32_t)i;
+        k->mass += weight_of(k, (uint32_t)i);
+    }
+    for (size_t i = 0; i < k->words->count; i++)
+        k->post[i] = (float)(weight_of(k, (uint32_t)i) / k->mass);
     k->ncands = k->words->count;
     k->turn = 0;
     memset(k->green, -1, sizeof(k->green));
@@ -31,7 +45,9 @@ void knowledge_reset(Knowledge *k)
 void knowledge_free(Knowledge *k)
 {
     free(k->cands);
+    free(k->post);
     k->cands = NULL;
+    k->post = NULL;
     k->ncands = 0;
 }
 
@@ -65,17 +81,46 @@ void knowledge_apply(Knowledge *k, const char *guess, Pattern p)
     // The pattern check is the ground truth: it handles repeated letters
     // exactly, which a letter-by-letter filter easily gets wrong.
     size_t kept = 0;
+    double mass = 0.0;
     for (size_t i = 0; i < k->ncands; i++)
     {
-        if (pattern_compute(guess, k->words->items[k->cands[i]]) == p)
-            k->cands[kept++] = k->cands[i];
+        uint32_t c = k->cands[i];
+        if (pattern_compute(guess, k->words->items[c]) == p)
+        {
+            k->cands[kept++] = c;
+            mass += weight_of(k, c);
+        }
+        else
+            k->post[c] = 0.0f;
     }
     k->ncands = kept;
+    k->mass = mass;
+    for (size_t i = 0; i < kept; i++)
+        k->post[k->cands[i]] = (float)(weight_of(k, k->cands[i]) / mass);
+
+    if (k->turn < MAX_GUESSES)
+    {
+        long index = wordlist_find(k->words, guess);
+        k->guessed[k->turn] = index >= 0 ? (uint32_t)index : UINT32_MAX;
+    }
     k->turn++;
 }
 
+int knowledge_was_guessed(const Knowledge *k, uint32_t word)
+{
+    int n = k->turn < MAX_GUESSES ? k->turn : MAX_GUESSES;
+    for (int i = 0; i < n; i++)
+    {
+        if (k->guessed[i] == word)
+            return 1;
+    }
+    return 0;
+}
+
 /*
- * Feature layout (FEATURE_DIM = 626), all values in [0, 1]:
+ * Feature layout (FEATURE_DIM = 628), all values in [0, 1]. "Share" means
+ * posterior probability mass, i.e. a plain fraction of the candidates when
+ * secrets are uniform.
  *   [  0, 156) letter known green at position      (pos * 26 + letter)
  *   [156, 312) letter known not to be at position
  *   [312, 390) letter count is at least 1, 2, 3     (letter * 3 + n - 1)
@@ -85,6 +130,9 @@ void knowledge_apply(Knowledge *k, const char *guess, Pattern p)
  *   [598, 624) share of candidates containing letter twice or more
  *   624        log(candidates) / log(dictionary size)
  *   625        turn / MAX_GUESSES
+ *   626        log(effective candidates) / log(dictionary size), where
+ *              effective = exp(entropy of the posterior)
+ *   627        probability of the most likely candidate
  */
 #define F_GREEN 0
 #define F_EXCLUDED 156
@@ -95,6 +143,8 @@ void knowledge_apply(Knowledge *k, const char *guess, Pattern p)
 #define F_TWICE_FREQ 598
 #define F_SIZE 624
 #define F_TURN 625
+#define F_EFFECTIVE 626
+#define F_TOP 627
 
 void knowledge_features(const Knowledge *k, float *x)
 {
@@ -113,30 +163,35 @@ void knowledge_features(const Knowledge *k, float *x)
         x[F_EXACT + l] = k->min_count[l] == k->max_count[l];
     }
 
+    double entropy = 0.0;
+    float top = 0.0f;
     for (size_t c = 0; c < k->ncands; c++)
     {
         const char *w = k->words->items[k->cands[c]];
+        float p = k->post[k->cands[c]];
         unsigned char count[ALPHABET] = { 0 };
         for (size_t i = 0; i < WORD_LEN; i++)
         {
             int l = w[i] - 'a';
-            x[F_POS_FREQ + i * ALPHABET + (size_t)l] += 1.0f;
+            x[F_POS_FREQ + i * ALPHABET + (size_t)l] += p;
             if (++count[l] == 1)
-                x[F_HAS_FREQ + l] += 1.0f;
+                x[F_HAS_FREQ + l] += p;
             else if (count[l] == 2)
-                x[F_TWICE_FREQ + l] += 1.0f;
+                x[F_TWICE_FREQ + l] += p;
         }
+        if (p > 0.0f)
+            entropy -= p * log(p);
+        if (p > top)
+            top = p;
     }
-    if (k->ncands > 0)
-    {
-        float inv = 1.0f / (float)k->ncands;
-        for (size_t j = F_POS_FREQ; j < F_SIZE; j++)
-            x[j] *= inv;
-    }
+    double log_n = log((double)k->words->count);
     if (k->ncands > 1 && k->words->count > 1)
-        x[F_SIZE] =
-            (float)(log((double)k->ncands) / log((double)k->words->count));
+    {
+        x[F_SIZE] = (float)(log((double)k->ncands) / log_n);
+        x[F_EFFECTIVE] = (float)(entropy / log_n);
+    }
     x[F_TURN] = (float)k->turn / MAX_GUESSES;
+    x[F_TOP] = top;
 }
 
 int word_features(const char *word, uint16_t idx[WORD_FEATURE_MAX])

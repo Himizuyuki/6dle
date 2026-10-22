@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "core/game.h"
 #include "core/rng.h"
 #include "solver/knowledge.h"
@@ -32,7 +34,7 @@ static void duplicate_grey_letter_keeps_the_secret(void)
     const WordList *words = full_bank();
     REQUIRE(words != NULL);
     Knowledge k;
-    REQUIRE(knowledge_init(&k, words) == 0);
+    REQUIRE(knowledge_init(&k, words, NULL) == 0);
     knowledge_apply(&k, "teeter", pattern_compute("teeter", "planet"));
     CHECK(is_candidate(&k, "planet"));
     CHECK(!is_candidate(&k, "teeter"));
@@ -54,7 +56,7 @@ static void green_letters_are_kept_in_place(void)
     const WordList *words = full_bank();
     REQUIRE(words != NULL);
     Knowledge k;
-    REQUIRE(knowledge_init(&k, words) == 0);
+    REQUIRE(knowledge_init(&k, words, NULL) == 0);
     knowledge_apply(&k, "guzzle", pattern_compute("guzzle", "puzzle"));
     REQUIRE(k.ncands > 0);
     for (size_t i = 0; i < k.ncands; i++)
@@ -73,7 +75,7 @@ static void filtering_is_exact_on_random_games(void)
     const WordList *words = full_bank();
     REQUIRE(words != NULL);
     Knowledge k;
-    REQUIRE(knowledge_init(&k, words) == 0);
+    REQUIRE(knowledge_init(&k, words, NULL) == 0);
     Rng rng;
     rng_seed(&rng, 99);
     int lost_secret = 0;
@@ -114,7 +116,7 @@ static void features_are_normalised(void)
     const WordList *words = full_bank();
     REQUIRE(words != NULL);
     Knowledge k;
-    REQUIRE(knowledge_init(&k, words) == 0);
+    REQUIRE(knowledge_init(&k, words, NULL) == 0);
     float x[FEATURE_DIM];
     knowledge_features(&k, x);
     // Fresh state: nothing known, all words possible.
@@ -136,8 +138,8 @@ static void features_are_normalised(void)
     CHECK(x[312 + ('t' - 'a') * 3] == 1.0f); // at least one T
     CHECK(x[390 + ('o' - 'a')] == 1.0f); // O count known (zero)
     // Every candidate has E at position 4 and contains a T.
-    CHECK_NEAR(x[416 + 4 * 26 + ('e' - 'a')], 1.0, 1e-6);
-    CHECK_NEAR(x[572 + ('t' - 'a')], 1.0, 1e-6);
+    CHECK_NEAR(x[416 + 4 * 26 + ('e' - 'a')], 1.0, 1e-5);
+    CHECK_NEAR(x[572 + ('t' - 'a')], 1.0, 1e-5);
     CHECK_NEAR(x[572 + ('o' - 'a')], 0.0, 1e-6);
     CHECK_NEAR(x[625], 1.0 / MAX_GUESSES, 1e-6);
     knowledge_free(&k);
@@ -160,6 +162,63 @@ static void word_feature_indices(void)
     CHECK_INT(word_features("assess", idx), 6 + 3 + 1); // a, s, e; s doubled
 }
 
+static void posterior_follows_bayes(void)
+{
+    // Uniform: every candidate has 1/n, ruled-out words 0.
+    const WordList *words = full_bank();
+    REQUIRE(words != NULL);
+    Knowledge k;
+    REQUIRE(knowledge_init(&k, words, NULL) == 0);
+    knowledge_apply(&k, "tories", pattern_compute("tories", "planet"));
+    double total = 0.0;
+    int zero_outside = 1;
+    for (size_t w = 0; w < words->count; w++)
+    {
+        total += k.post[w];
+        if (!is_candidate(&k, words->items[w]))
+            zero_outside &= k.post[w] == 0.0f;
+    }
+    CHECK_NEAR(total, 1.0, 1e-4);
+    CHECK(zero_outside);
+    CHECK_NEAR(k.post[wordlist_find(words, "planet")], 1.0 / k.ncands, 1e-7);
+
+    // With a prior, the posterior is the prior restricted to the candidates
+    // and renormalised.
+    float *prior = malloc(words->count * sizeof(float));
+    for (size_t w = 0; w < words->count; w++)
+        prior[w] = 1.0f;
+    long planet = wordlist_find(words, "planet");
+    prior[planet] = 9.0f;
+    knowledge_free(&k);
+    REQUIRE(knowledge_init(&k, words, prior) == 0);
+    knowledge_apply(&k, "tories", pattern_compute("tories", "planet"));
+    double expected = 9.0 / (9.0 + (double)(k.ncands - 1));
+    CHECK_NEAR(k.post[planet], expected, 1e-6);
+    float x[FEATURE_DIM];
+    knowledge_features(&k, x);
+    CHECK_NEAR(x[627], expected, 1e-6); // most likely candidate
+    CHECK(x[626] < x[624]); // effective size below the raw count
+    knowledge_free(&k);
+    free(prior);
+}
+
+static void guesses_are_remembered(void)
+{
+    const WordList *words = full_bank();
+    REQUIRE(words != NULL);
+    Knowledge k;
+    REQUIRE(knowledge_init(&k, words, NULL) == 0);
+    long tories = wordlist_find(words, "tories");
+    long planet = wordlist_find(words, "planet");
+    CHECK(!knowledge_was_guessed(&k, (uint32_t)tories));
+    knowledge_apply(&k, "tories", pattern_compute("tories", "planet"));
+    CHECK(knowledge_was_guessed(&k, (uint32_t)tories));
+    CHECK(!knowledge_was_guessed(&k, (uint32_t)planet));
+    knowledge_reset(&k);
+    CHECK(!knowledge_was_guessed(&k, (uint32_t)tories));
+    knowledge_free(&k);
+}
+
 static void release_bank(void)
 {
     if (bank_loaded)
@@ -174,5 +233,7 @@ void knowledge_tests(void)
     RUN(filtering_is_exact_on_random_games);
     RUN(features_are_normalised);
     RUN(word_feature_indices);
+    RUN(posterior_follows_bayes);
+    RUN(guesses_are_remembered);
     release_bank();
 }

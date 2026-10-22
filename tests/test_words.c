@@ -97,9 +97,41 @@ static void real_word_bank_loads(void)
 {
     WordList list;
     REQUIRE(wordlist_load(&list, SIXDLE_WORDS) == 0);
-    CHECK_INT(list.count, 22159);
+    CHECK_INT(list.count, 22182);
+    CHECK(wordlist_find(&list, "selfie") >= 0); // added to SOWPODS
     CHECK(wordlist_find(&list, "puzzle") >= 0);
     CHECK(wordlist_find(&list, "planet") >= 0);
+    wordlist_free(&list);
+}
+
+static void frequencies_load(void)
+{
+    WordList list;
+    REQUIRE(wordlist_load(&list, FIXTURE("small.txt")) == 0);
+    CHECK(list.zipf == NULL);
+    REQUIRE(wordlist_load_frequencies(&list, FIXTURE("small-freq.txt")) == 0);
+    REQUIRE(list.zipf != NULL);
+    CHECK_NEAR(list.zipf[wordlist_find(&list, "bottle")], 4.3, 1e-6);
+    CHECK_NEAR(list.zipf[wordlist_find(&list, "jumble")], 2.8, 1e-6);
+    CHECK_NEAR(list.zipf[wordlist_find(&list, "cocoon")], 0.0,
+               1e-9); // unlisted
+    CHECK(wordlist_load_frequencies(&list, FIXTURE("nope.txt")) == -1);
+    CHECK(list.zipf != NULL); // a failed reload keeps the previous values
+    wordlist_free(&list);
+    CHECK(list.zipf == NULL);
+}
+
+static void real_frequencies_cover_the_bank(void)
+{
+    WordList list;
+    REQUIRE(wordlist_load(&list, SIXDLE_WORDS) == 0);
+    REQUIRE(wordlist_load_frequencies(&list, SIXDLE_FREQ) == 0);
+    size_t known = 0;
+    for (size_t i = 0; i < list.count; i++)
+        known += list.zipf[i] > 0.0f;
+    CHECK(known > 11000); // about half the bank is in the corpus
+    CHECK(list.zipf[wordlist_find(&list, "people")] > 6.0f);
+    CHECK(list.zipf[wordlist_find(&list, "aaliis")] == 0.0f);
     wordlist_free(&list);
 }
 
@@ -111,4 +143,6 @@ void words_tests(void)
     RUN(find_is_case_insensitive_and_strict);
     RUN(word_validity);
     RUN(real_word_bank_loads);
+    RUN(frequencies_load);
+    RUN(real_frequencies_cover_the_bank);
 }
